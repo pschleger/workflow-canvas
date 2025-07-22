@@ -33,6 +33,7 @@ Comprehensive editing capabilities for workflow states and transitions, includin
   - Transition additions, deletions, modifications
   - Property changes (names, positions, configurations)
   - Initial state changes
+  - Positioning changes
 - **Storage**: Session-based storage (sessionStorage)
 - **Behavior**:
   - Automatic tracking of all changes

@@ -42,6 +42,17 @@ Interactive features that allow users to manipulate the workflow canvas directly
   - Zoom controls in toolbar
   - Minimap for navigation
 
+### Automatic Layout
+- **Description**: Button to automatically reposition all states using a layout algorithm for better organization
+- **Behavior**:
+  - Layout button in canvas toolbar or controls panel
+  - Applies hierarchical layout algorithm (e.g., Dagre) to arrange states
+  - Preserves logical flow from initial state through transitions
+  - Maintains reasonable spacing between states and transitions
+  - Animates states to new positions for smooth visual transition
+  - Can be undone using standard undo functionality
+  - Works with workflows of any size and complexity
+
 ### Quick Help Panel
 - **Description**: On-screen help panel showing available interactions
 - **Content**:
@@ -51,6 +62,7 @@ Interactive features that allow users to manipulate the workflow canvas directly
   - Drag transition labels to reposition
   - Click edit icons to modify
   - Drag states to rearrange
+  - Use layout button to auto-arrange states
 
 ## Technical Implementation
 - Uses React Flow library for canvas functionality
