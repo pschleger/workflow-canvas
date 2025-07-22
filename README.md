@@ -1,4 +1,4 @@
-# State Machine Workflow Editor
+# Workflow Canvas
 
 A web-based application for configuring, visualizing, and editing state machine workflows using a drag-and-drop interface, built with React, TypeScript, and React Flow.
 
@@ -43,7 +43,7 @@ A web-based application for configuring, visualizing, and editing state machine 
 1. Clone the repository:
 ```bash
 git clone <repository-url>
-cd statemachine-ui
+cd workflow-canvas
 ```
 
 2. Install dependencies:

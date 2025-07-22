@@ -1,0 +1,35 @@
+# Augment Code Guidelines for Workflow Canvas Project
+
+## Code Style & Patterns
+- Use TypeScript for all new code with strict type checking
+- Prefer functional components with hooks over class components
+- Use React Flow (@xyflow/react) for all diagramming and canvas functionality
+- Implement state management with React hooks (useState, useReducer) rather than external libraries
+- Use Tailwind CSS for styling with dark mode support via the `dark:` prefix
+- Follow the existing component structure: Canvas/, Editors/, Layout/, Sidebar/
+
+## Architecture Patterns
+- Maintain separation between UI components and business logic
+- Keep API services in the `services/` directory with clear interfaces
+- Use the existing mock API pattern for backend integration
+- Implement proper TypeScript interfaces in `types/` directory
+- Follow the established workflow data model (Workflow, WorkflowState, WorkflowTransition)
+
+## Component Guidelines
+- Components should accept `darkMode` prop for theme consistency
+- Use callback patterns for parent-child communication (onSave, onDelete, etc.)
+- Implement proper loading states and error handling
+- Use React Flow's built-in types (Node, Edge, Connection) for canvas operations
+
+## Code Quality
+- Provide detailed TypeScript type annotations
+- Include JSDoc comments for complex functions
+- Use meaningful variable and function names that describe their purpose
+- Implement proper error boundaries and validation
+
+## Response Preferences
+- Explain TypeScript interfaces and their relationships in detail
+- Show how new code integrates with existing React Flow canvas
+- Provide context about state management patterns used in the project
+- Include dark mode implementation when adding new UI components
+- Reference existing components and patterns when suggesting modifications
