@@ -4,8 +4,7 @@ description: "Example description"
 ---
 # React Flow Canvas Rules
 
-**Rule Type**: Auto  
-**Description**: Guidelines for React Flow canvas functionality, diagramming, node-based interfaces, workflow visualization, and interactive canvas operations.
+Guidelines for React Flow canvas functionality, diagramming, node-based interfaces, workflow visualization, and interactive canvas operations.
 
 ## React Flow Library Usage
 

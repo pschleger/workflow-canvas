@@ -4,8 +4,7 @@ type: "always_apply"
 
 # Core Development Rules
 
-**Rule Type**: Always  
-**Description**: Fundamental development patterns and standards that apply to all code changes in this project.
+Fundamental development patterns and standards that apply to all code changes in this project.
 
 ## Code Style & Language Standards
 

@@ -4,8 +4,7 @@ description: "Example description"
 ---
 # Component Development Rules
 
-**Rule Type**: Auto  
-**Description**: Guidelines for React component development, UI consistency, theming, component patterns, and user interface implementation.
+Guidelines for React component development, UI consistency, theming, component patterns, and user interface implementation.
 
 ## Component Structure & Patterns
 

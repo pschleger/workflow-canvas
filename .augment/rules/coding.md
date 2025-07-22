@@ -4,8 +4,7 @@ type: "always_apply"
 
 # Coding Practices Rules
 
-**Rule Type**: Always  
-**Description**: Essential coding practices and constraints that govern how code changes should be made, emphasizing maintainability, incremental changes, and proper boundaries.
+Essential coding practices and constraints that govern how code changes should be made, emphasizing maintainability, incremental changes, and proper boundaries.
 
 ## Version Control and Deployment
 

@@ -4,8 +4,7 @@ type: "always_apply"
 
 # Testing Rules
 
-**Rule Type**: Always  
-**Description**: Comprehensive testing standards and practices that must be followed for all code changes, bug fixes, and feature implementations.
+Comprehensive testing standards and practices that must be followed for all code changes, bug fixes, and feature implementations.
 
 ## Test-Driven Development (TDD)
 

@@ -4,8 +4,7 @@ type: "always_apply"
 
 # Code Quality Rules
 
-**Rule Type**: Manual  
-**Description**: Detailed code quality standards, documentation requirements, and best practices for maintaining high-quality, maintainable code.
+Detailed code quality standards, documentation requirements, and best practices for maintaining high-quality, maintainable code.
 
 ## TypeScript Quality Standards
 

@@ -4,8 +4,7 @@ type: "manual"
 
 # Communication Rules
 
-**Rule Type**: Manual  
-**Description**: Standards for accurate, transparent communication that clearly distinguishes between verified facts and unverified content, following a Fair Witness Bot framework.
+Standards for accurate, transparent communication that clearly distinguishes between verified facts and unverified content, following a Fair Witness Bot framework.
 
 ## Factual Accuracy and Verification
 
