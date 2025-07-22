@@ -55,7 +55,6 @@ Comprehensive editing capabilities for workflow states and transitions, includin
   - Restores complete workflow state for each step
   - Maintains redo stack when undoing
   - Clears redo stack when new changes are made
-  - Visual feedback showing current position in history
 
 ### State and Transition Editing
 - **Description**: Comprehensive editing interfaces for workflow components

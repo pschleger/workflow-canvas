@@ -1,5 +1,5 @@
 import React from 'react';
-import { Moon, Sun, Download, Upload } from 'lucide-react';
+import { Moon, Sun, Download, Upload, Undo, Redo } from 'lucide-react';
 
 interface MainLayoutProps {
   children: React.ReactNode;
@@ -8,6 +8,12 @@ interface MainLayoutProps {
   onToggleDarkMode: () => void;
   onImport: () => void;
   onExport: () => void;
+  onUndo?: () => void;
+  onRedo?: () => void;
+  canUndo?: boolean;
+  canRedo?: boolean;
+  undoCount?: number;
+  redoCount?: number;
 }
 
 export const MainLayout: React.FC<MainLayoutProps> = ({
@@ -16,7 +22,13 @@ export const MainLayout: React.FC<MainLayoutProps> = ({
   darkMode,
   onToggleDarkMode,
   onImport,
-  onExport
+  onExport,
+  onUndo,
+  onRedo,
+  canUndo = false,
+  canRedo = false,
+  undoCount = 0,
+  redoCount = 0
 }) => {
   return (
     <div className={`h-screen flex flex-col ${darkMode ? 'dark' : ''}`}>
@@ -29,6 +41,37 @@ export const MainLayout: React.FC<MainLayoutProps> = ({
         </div>
         
         <div className="flex items-center space-x-2">
+          {/* Undo/Redo buttons */}
+          <button
+            onClick={onUndo}
+            disabled={!canUndo}
+            className="flex items-center space-x-1 px-3 py-2 text-sm bg-gray-500 hover:bg-gray-600 disabled:bg-gray-300 disabled:cursor-not-allowed text-white font-medium rounded-md transition-colors duration-200"
+            title={`Undo (${undoCount} available)`}
+          >
+            <Undo size={16} />
+            <span>Undo</span>
+            {undoCount > 0 && (
+              <span className="ml-1 text-xs bg-gray-600 px-1 rounded">
+                {undoCount}
+              </span>
+            )}
+          </button>
+
+          <button
+            onClick={onRedo}
+            disabled={!canRedo}
+            className="flex items-center space-x-1 px-3 py-2 text-sm bg-gray-500 hover:bg-gray-600 disabled:bg-gray-300 disabled:cursor-not-allowed text-white font-medium rounded-md transition-colors duration-200"
+            title={`Redo (${redoCount} available)`}
+          >
+            <Redo size={16} />
+            <span>Redo</span>
+            {redoCount > 0 && (
+              <span className="ml-1 text-xs bg-gray-600 px-1 rounded">
+                {redoCount}
+              </span>
+            )}
+          </button>
+
           {/* Import/Export buttons */}
           <button
             onClick={onImport}

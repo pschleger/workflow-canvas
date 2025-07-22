@@ -17,10 +17,11 @@ import '@xyflow/react/dist/style.css';
 import type { UIWorkflowData, UIStateData, UITransitionData, StateDefinition, TransitionDefinition } from '../../types/workflow';
 import { StateNode } from './StateNode';
 import { TransitionEdge } from './TransitionEdge';
+import { validateTransitionStates, parseTransitionId } from '../../utils/transitionUtils';
 
 interface WorkflowCanvasProps {
   workflow: UIWorkflowData | null;
-  onWorkflowUpdate: (workflow: UIWorkflowData) => void;
+  onWorkflowUpdate: (workflow: UIWorkflowData, description?: string) => void;
   onStateEdit: (stateId: string) => void;
   onTransitionEdit: (transitionId: string) => void;
   darkMode: boolean;
@@ -35,7 +36,7 @@ const edgeTypes = {
 };
 
 // Helper function to ensure workflow layout and configuration are in sync
-function cleanupWorkflowState(workflow: UIWorkflowData): UIWorkflowData {
+export function cleanupWorkflowState(workflow: UIWorkflowData): UIWorkflowData {
   try {
     if (!workflow || !workflow.configuration || !workflow.layout) {
       return workflow;
@@ -50,13 +51,9 @@ function cleanupWorkflowState(workflow: UIWorkflowData): UIWorkflowData {
 
     // Remove layout transitions that reference non-existent states
     const cleanedLayoutTransitions = (workflow.layout.transitions || []).filter(layoutTransition => {
-      // Parse transition ID to check if source and target states exist
-      const parts = layoutTransition.id.split('-');
-      if (parts.length >= 2) {
-        const sourceStateId = parts[0];
-        return configStateIds.has(sourceStateId);
-      }
-      return false;
+      // Use the new transition utilities to validate transitions
+      // This handles both old format and new escaped format
+      return validateTransitionStates(layoutTransition.id, configStateIds);
     });
 
     return {
@@ -101,7 +98,8 @@ function createUITransitionData(workflow: UIWorkflowData): UITransitionData[] {
 
   Object.entries(workflow.configuration.states).forEach(([sourceStateId, stateDefinition]) => {
     stateDefinition.transitions.forEach((transitionDef, index) => {
-      const transitionId = `${sourceStateId}-${index}`;
+      // Generate transition ID that matches the layout format: sourceState-to-targetState
+      const transitionId = `${sourceStateId}-to-${transitionDef.next}`;
       const layout = transitionLayoutMap.get(transitionId);
 
       transitions.push({
@@ -189,7 +187,7 @@ const WorkflowCanvasInner: React.FC<WorkflowCanvasProps> = ({
       }
     };
 
-    onWorkflowUpdate(updatedWorkflow);
+    onWorkflowUpdate(updatedWorkflow, 'Created transition connection');
   }, [cleanedWorkflow, onWorkflowUpdate]);
 
   // Create ref for handleTransitionUpdate to avoid dependency issues
@@ -248,11 +246,12 @@ const WorkflowCanvasInner: React.FC<WorkflowCanvasProps> = ({
         layout: {
           ...cleanedWorkflow.layout,
           states: updatedLayoutStates,
+          transitions: cleanedWorkflow.layout.transitions, // Explicitly preserve transitions
           updatedAt: new Date().toISOString()
         }
       };
 
-      onWorkflowUpdate(updatedWorkflow);
+      onWorkflowUpdate(updatedWorkflow, 'Deleted states');
     }
   }, [defaultOnNodesChange, cleanedWorkflow, onWorkflowUpdate]);
 
@@ -345,7 +344,7 @@ const WorkflowCanvasInner: React.FC<WorkflowCanvasProps> = ({
         }
       };
 
-      onWorkflowUpdate(updatedWorkflow);
+      onWorkflowUpdate(updatedWorkflow, `Connected ${params.source} to ${params.target}`);
     },
     [cleanedWorkflow, onWorkflowUpdate]
   );
@@ -366,11 +365,12 @@ const WorkflowCanvasInner: React.FC<WorkflowCanvasProps> = ({
         layout: {
           ...cleanedWorkflow.layout,
           states: updatedLayoutStates,
+          transitions: cleanedWorkflow.layout.transitions, // Explicitly preserve transitions
           updatedAt: new Date().toISOString()
         }
       };
 
-      onWorkflowUpdate(updatedWorkflow);
+      onWorkflowUpdate(updatedWorkflow, `Moved state: ${node.id}`);
     },
     [cleanedWorkflow, onWorkflowUpdate]
   );
@@ -455,12 +455,13 @@ const WorkflowCanvasInner: React.FC<WorkflowCanvasProps> = ({
         layout: {
           ...currentWorkflow.layout,
           states: updatedLayoutStates,
+          transitions: currentWorkflow.layout.transitions, // Explicitly preserve transitions
           updatedAt: new Date().toISOString()
         }
       };
 
 
-        onWorkflowUpdate(updatedWorkflow);
+        onWorkflowUpdate(updatedWorkflow, `Added new state: ${newStateId}`);
 
         // Reset click tracking after successful double-click
         lastClickTimeRef.current = 0;

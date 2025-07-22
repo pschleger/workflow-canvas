@@ -143,6 +143,16 @@ export interface WorkflowWithLayoutResponse extends ApiResponse<{
   layout: CanvasLayout;
 }> {}
 
+// Application Configuration types
+export interface AppConfiguration {
+  history: {
+    maxDepth: number;
+  };
+  ui: {
+    darkMode: boolean;
+  };
+}
+
 // UI State types
 export interface AppState {
   selectedEntityId: string | null;
@@ -153,6 +163,7 @@ export interface AppState {
   isLoading: boolean;
   error: string | null;
   darkMode: boolean;
+  configuration: AppConfiguration;
 }
 
 // React Flow specific types - combines state config with layout for rendering

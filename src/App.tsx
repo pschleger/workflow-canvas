@@ -1,11 +1,14 @@
-import { useState, useCallback } from 'react';
+import { useState, useCallback, useEffect } from 'react';
 import { MainLayout } from './components/Layout/MainLayout';
 import { EntityWorkflowSelector } from './components/Sidebar/EntityWorkflowSelector';
 import { WorkflowCanvas } from './components/Canvas/WorkflowCanvas';
 import { StateEditor } from './components/Editors/StateEditor';
 import { TransitionEditor } from './components/Editors/TransitionEditor';
 import { MockApiService } from './services/mockApi';
-import type { WorkflowConfiguration, CanvasLayout, UIWorkflowData, StateDefinition, TransitionDefinition } from './types/workflow';
+import { configService } from './services/configService';
+import { historyService } from './services/historyService';
+import { useKeyboardShortcuts } from './hooks/useKeyboardShortcuts';
+import type { WorkflowConfiguration, CanvasLayout, UIWorkflowData, StateDefinition, TransitionDefinition, AppConfiguration } from './types/workflow';
 
 // Helper function to combine configuration and layout into UI workflow data
 function combineWorkflowData(workflowId: string, entityId: string, config: WorkflowConfiguration, layout: CanvasLayout): UIWorkflowData {
@@ -23,12 +26,35 @@ function App() {
   const [selectedEntityId, setSelectedEntityId] = useState<string | null>(null);
   const [selectedWorkflowId, setSelectedWorkflowId] = useState<string | null>(null);
   const [currentWorkflow, setCurrentWorkflow] = useState<UIWorkflowData | null>(null);
-  const [darkMode, setDarkMode] = useState(() => {
-    // Load dark mode preference from localStorage
-    const saved = localStorage.getItem('darkMode');
-    return saved ? JSON.parse(saved) : false;
-  });
+  const [configuration, setConfiguration] = useState<AppConfiguration>(() => configService.getConfig());
+  const [darkMode, setDarkMode] = useState(() => configuration.ui.darkMode);
+
+  // History state for UI updates
+  const [canUndo, setCanUndo] = useState(false);
+  const [canRedo, setCanRedo] = useState(false);
+  const [undoCount, setUndoCount] = useState(0);
+  const [redoCount, setRedoCount] = useState(0);
   const [loading, setLoading] = useState(false);
+
+  // Update history state when workflow changes
+  const updateHistoryState = useCallback(() => {
+    if (selectedWorkflowId) {
+      setCanUndo(historyService.canUndo(selectedWorkflowId));
+      setCanRedo(historyService.canRedo(selectedWorkflowId));
+      setUndoCount(historyService.getUndoCount(selectedWorkflowId));
+      setRedoCount(historyService.getRedoCount(selectedWorkflowId));
+    } else {
+      setCanUndo(false);
+      setCanRedo(false);
+      setUndoCount(0);
+      setRedoCount(0);
+    }
+  }, [selectedWorkflowId]);
+
+  // Update history state when workflow selection changes
+  useEffect(() => {
+    updateHistoryState();
+  }, [selectedWorkflowId, updateHistoryState]);
 
   // Editor states
   const [editingStateId, setEditingStateId] = useState<string | null>(null);
@@ -69,8 +95,16 @@ function App() {
     }
   }, []);
 
-  const handleWorkflowUpdate = useCallback(async (workflow: UIWorkflowData) => {
+  const handleWorkflowUpdate = useCallback(async (workflow: UIWorkflowData, description: string = 'Workflow updated', trackHistory: boolean = true) => {
+    // Track history before updating (if not an undo/redo operation)
+    if (trackHistory && currentWorkflow && selectedWorkflowId) {
+      historyService.addEntry(selectedWorkflowId, currentWorkflow, description);
+    }
+
     setCurrentWorkflow(workflow);
+
+    // Update history state
+    updateHistoryState();
 
     // Save both configuration and layout
     try {
@@ -81,7 +115,37 @@ function App() {
     } catch (error) {
       console.error('Error saving workflow:', error);
     }
-  }, []);
+  }, [currentWorkflow, selectedWorkflowId, updateHistoryState]);
+
+  // Handle undo operation
+  const handleUndo = useCallback(() => {
+    if (selectedWorkflowId && canUndo) {
+      const previousWorkflow = historyService.undo(selectedWorkflowId);
+      if (previousWorkflow) {
+        // Don't track history for undo operations
+        handleWorkflowUpdate(previousWorkflow, 'Undo operation', false);
+      }
+    }
+  }, [selectedWorkflowId, canUndo, handleWorkflowUpdate]);
+
+  // Handle redo operation
+  const handleRedo = useCallback(() => {
+    if (selectedWorkflowId && canRedo) {
+      const nextWorkflow = historyService.redo(selectedWorkflowId);
+      if (nextWorkflow) {
+        // Don't track history for redo operations
+        handleWorkflowUpdate(nextWorkflow, 'Redo operation', false);
+      }
+    }
+  }, [selectedWorkflowId, canRedo, handleWorkflowUpdate]);
+
+  // Set up keyboard shortcuts
+  useKeyboardShortcuts({
+    onUndo: handleUndo,
+    onRedo: handleRedo,
+    canUndo,
+    canRedo
+  });
 
   const handleStateEdit = useCallback((stateId: string) => {
     if (!currentWorkflow) return;
@@ -123,7 +187,7 @@ function App() {
       }
     };
 
-    handleWorkflowUpdate(updatedWorkflow);
+    handleWorkflowUpdate(updatedWorkflow, `Updated state: ${stateId}`);
   }, [currentWorkflow, handleWorkflowUpdate]);
 
   const handleTransitionSave = useCallback((transitionId: string, definition: TransitionDefinition) => {
@@ -153,7 +217,7 @@ function App() {
         }
       };
 
-      handleWorkflowUpdate(updatedWorkflow);
+      handleWorkflowUpdate(updatedWorkflow, `Updated transition: ${transitionId}`);
     }
   }, [currentWorkflow, handleWorkflowUpdate]);
 
@@ -200,7 +264,7 @@ function App() {
 
 
 
-    handleWorkflowUpdate(updatedWorkflow);
+    handleWorkflowUpdate(updatedWorkflow, `Deleted state: ${stateId}`);
   }, [currentWorkflow, handleWorkflowUpdate]);
 
   const handleTransitionDelete = useCallback((transitionId: string) => {
@@ -229,7 +293,7 @@ function App() {
         }
       };
 
-      handleWorkflowUpdate(updatedWorkflow);
+      handleWorkflowUpdate(updatedWorkflow, `Deleted transition: ${transitionId}`);
     }
   }, [currentWorkflow, handleWorkflowUpdate]);
 
@@ -260,7 +324,7 @@ function App() {
               setSelectedWorkflowId(workflowData.id);
 
               // Save to mock backend using the new segregated structure
-              handleWorkflowUpdate(workflowData);
+              handleWorkflowUpdate(workflowData, 'Imported workflow');
 
               alert('Workflow imported successfully!');
             } else {
@@ -322,6 +386,12 @@ function App() {
         onToggleDarkMode={handleToggleDarkMode}
         onImport={handleImport}
         onExport={handleExport}
+        onUndo={handleUndo}
+        onRedo={handleRedo}
+        canUndo={canUndo}
+        canRedo={canRedo}
+        undoCount={undoCount}
+        redoCount={redoCount}
       >
         {canvas}
       </MainLayout>
