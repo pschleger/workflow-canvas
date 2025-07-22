@@ -1,4 +1,4 @@
-import React, { useCallback, useMemo } from 'react';
+import React, { useCallback, useMemo, useRef } from 'react';
 import {
   ReactFlow,
   Background,
@@ -7,7 +7,9 @@ import {
   useNodesState,
   useEdgesState,
   ConnectionMode,
-  Panel
+  Panel,
+  useReactFlow,
+  ReactFlowProvider
 } from '@xyflow/react';
 import type { Node, Edge, Connection } from '@xyflow/react';
 import '@xyflow/react/dist/style.css';
@@ -31,6 +33,45 @@ const nodeTypes = {
 const edgeTypes = {
   transitionEdge: TransitionEdge,
 };
+
+// Helper function to ensure workflow layout and configuration are in sync
+function cleanupWorkflowState(workflow: UIWorkflowData): UIWorkflowData {
+  try {
+    if (!workflow || !workflow.configuration || !workflow.layout) {
+      return workflow;
+    }
+
+    const configStateIds = new Set(Object.keys(workflow.configuration.states || {}));
+
+    // Remove layout states that don't have corresponding configuration states
+    const cleanedLayoutStates = (workflow.layout.states || []).filter(layoutState =>
+      configStateIds.has(layoutState.id)
+    );
+
+    // Remove layout transitions that reference non-existent states
+    const cleanedLayoutTransitions = (workflow.layout.transitions || []).filter(layoutTransition => {
+      // Parse transition ID to check if source and target states exist
+      const parts = layoutTransition.id.split('-');
+      if (parts.length >= 2) {
+        const sourceStateId = parts[0];
+        return configStateIds.has(sourceStateId);
+      }
+      return false;
+    });
+
+    return {
+      ...workflow,
+      layout: {
+        ...workflow.layout,
+        states: cleanedLayoutStates,
+        transitions: cleanedLayoutTransitions
+      }
+    };
+  } catch (error) {
+    console.error('Error cleaning up workflow state:', error);
+    return workflow; // Return original workflow if cleanup fails
+  }
+}
 
 // Helper function to convert schema workflow to UI state data
 function createUIStateData(workflow: UIWorkflowData): UIStateData[] {
@@ -76,53 +117,55 @@ function createUITransitionData(workflow: UIWorkflowData): UITransitionData[] {
   return transitions;
 }
 
-export const WorkflowCanvas: React.FC<WorkflowCanvasProps> = ({
+// Inner component that uses useReactFlow hook
+const WorkflowCanvasInner: React.FC<WorkflowCanvasProps> = ({
   workflow,
   onWorkflowUpdate,
   onStateEdit,
   onTransitionEdit,
   darkMode
 }) => {
+  const { screenToFlowPosition } = useReactFlow();
+
+  // Use ref to always get current workflow value (fixes closure issue)
+  // Re-enable cleanup now that the white screen issue is resolved
+  const cleanedWorkflow = workflow ? cleanupWorkflowState(workflow) : null;
+  const workflowRef = useRef(cleanedWorkflow);
+  workflowRef.current = cleanedWorkflow;
+
+
   // Convert schema workflow to UI data
   const uiStates = useMemo(() => {
-    return workflow ? createUIStateData(workflow) : [];
-  }, [workflow]);
+    return cleanedWorkflow ? createUIStateData(cleanedWorkflow) : [];
+  }, [cleanedWorkflow]);
 
   const uiTransitions = useMemo(() => {
-    return workflow ? createUITransitionData(workflow) : [];
-  }, [workflow]);
+    return cleanedWorkflow ? createUITransitionData(cleanedWorkflow) : [];
+  }, [cleanedWorkflow]);
 
-  // Convert UI data to React Flow format
-  const initialNodes: Node[] = useMemo(() => {
-    return uiStates.map((state) => ({
-      id: state.id,
-      type: 'stateNode',
-      position: state.position,
-      data: {
-        label: state.name,
-        state: state,
-        onEdit: onStateEdit,
-      },
-    }));
-  }, [uiStates, onStateEdit]);
+  // Use refs to access current values in useEffect without causing dependency issues
+  const uiStatesRef = useRef(uiStates);
+  const uiTransitionsRef = useRef(uiTransitions);
+  const onStateEditRef = useRef(onStateEdit);
+  const onTransitionEditRef = useRef(onTransitionEdit);
+
+  uiStatesRef.current = uiStates;
+  uiTransitionsRef.current = uiTransitions;
+  onStateEditRef.current = onStateEdit;
+  onTransitionEditRef.current = onTransitionEdit;
+
+
 
   const handleTransitionUpdate = useCallback((updatedTransition: UITransitionData) => {
-    if (!workflow) return;
-
-    console.log('WorkflowCanvas: Handling transition update', {
-      transitionId: updatedTransition.id,
-      labelPosition: updatedTransition.labelPosition,
-      existingLayoutTransitions: workflow.layout.transitions
-    });
+    if (!cleanedWorkflow) return;
 
     // Find existing layout transition or create new one
-    const existingLayoutTransitions = workflow.layout.transitions;
+    const existingLayoutTransitions = cleanedWorkflow.layout.transitions;
     const existingIndex = existingLayoutTransitions.findIndex(t => t.id === updatedTransition.id);
 
     let updatedLayoutTransitions;
     if (existingIndex >= 0) {
       // Update existing layout transition
-      console.log('WorkflowCanvas: Updating existing layout transition');
       updatedLayoutTransitions = existingLayoutTransitions.map(t =>
         t.id === updatedTransition.id
           ? { ...t, labelPosition: updatedTransition.labelPosition }
@@ -130,7 +173,6 @@ export const WorkflowCanvas: React.FC<WorkflowCanvasProps> = ({
       );
     } else {
       // Create new layout transition
-      console.log('WorkflowCanvas: Creating new layout transition');
       const newLayoutTransition = {
         id: updatedTransition.id,
         labelPosition: updatedTransition.labelPosition
@@ -139,48 +181,143 @@ export const WorkflowCanvas: React.FC<WorkflowCanvasProps> = ({
     }
 
     const updatedWorkflow: UIWorkflowData = {
-      ...workflow,
+      ...cleanedWorkflow,
       layout: {
-        ...workflow.layout,
+        ...cleanedWorkflow.layout,
         transitions: updatedLayoutTransitions,
         updatedAt: new Date().toISOString()
       }
     };
 
     onWorkflowUpdate(updatedWorkflow);
-  }, [workflow, onWorkflowUpdate]);
+  }, [cleanedWorkflow, onWorkflowUpdate]);
 
-  const initialEdges: Edge[] = useMemo(() => {
-    return uiTransitions.map((transition) => ({
-      id: transition.id,
-      type: 'transitionEdge',
-      source: transition.sourceStateId,
-      target: transition.targetStateId,
-      data: {
-        transition: transition,
-        onEdit: onTransitionEdit,
-        onUpdate: handleTransitionUpdate,
-      },
-      label: transition.definition.name || '',
-      animated: true,
-    }));
-  }, [uiTransitions, onTransitionEdit, handleTransitionUpdate]);
+  // Create ref for handleTransitionUpdate to avoid dependency issues
+  const handleTransitionUpdateRef = useRef(handleTransitionUpdate);
+  handleTransitionUpdateRef.current = handleTransitionUpdate;
 
-  const [nodes, setNodes, onNodesChange] = useNodesState(initialNodes);
-  const [edges, setEdges, onEdgesChange] = useEdgesState(initialEdges);
 
-  // Update nodes and edges when workflow changes
+
+  const [nodes, setNodes, defaultOnNodesChange] = useNodesState([]);
+  const [edges, setEdges, defaultOnEdgesChange] = useEdgesState([]);
+  const [isInitialized, setIsInitialized] = React.useState(false);
+
+  // Custom onNodesChange handler that updates workflow configuration when nodes are deleted
+  const onNodesChange = useCallback((changes: any[]) => {
+    // First apply the changes to React Flow's internal state
+    defaultOnNodesChange(changes);
+
+    // Check if any nodes were removed
+    const removedNodes = changes.filter(change => change.type === 'remove');
+
+    if (removedNodes.length > 0 && cleanedWorkflow) {
+      // Update workflow configuration to remove deleted states
+      const removedNodeIds = removedNodes.map(change => change.id);
+      console.log('Nodes removed via keyboard:', removedNodeIds);
+
+      const updatedStates = { ...cleanedWorkflow.configuration.states };
+      removedNodeIds.forEach(nodeId => {
+        delete updatedStates[nodeId];
+      });
+
+      // Remove transitions that reference deleted states
+      Object.keys(updatedStates).forEach(sourceStateId => {
+        const state = updatedStates[sourceStateId];
+        state.transitions = state.transitions.filter(t => !removedNodeIds.includes(t.next));
+      });
+
+      // Handle initial state deletion
+      let updatedInitialState = cleanedWorkflow.configuration.initialState;
+      if (removedNodeIds.includes(updatedInitialState)) {
+        const remainingStates = Object.keys(updatedStates);
+        updatedInitialState = remainingStates.length > 0 ? remainingStates[0] : '';
+      }
+
+      // Remove from layout
+      const updatedLayoutStates = cleanedWorkflow.layout.states.filter(
+        s => !removedNodeIds.includes(s.id)
+      );
+
+      const updatedWorkflow: UIWorkflowData = {
+        ...cleanedWorkflow,
+        configuration: {
+          ...cleanedWorkflow.configuration,
+          initialState: updatedInitialState,
+          states: updatedStates
+        },
+        layout: {
+          ...cleanedWorkflow.layout,
+          states: updatedLayoutStates,
+          updatedAt: new Date().toISOString()
+        }
+      };
+
+      onWorkflowUpdate(updatedWorkflow);
+    }
+  }, [defaultOnNodesChange, cleanedWorkflow, onWorkflowUpdate]);
+
+  // Custom onEdgesChange handler (for completeness, though edges are handled differently)
+  const onEdgesChange = useCallback((changes: any[]) => {
+    defaultOnEdgesChange(changes);
+    // Edge deletion is handled through transition removal in configuration
+    // No additional workflow update needed here since edges are derived from transitions
+  }, [defaultOnEdgesChange]);
+
+  // Update nodes and edges when workflow changes - use workflow ID as dependency to avoid infinite loops
   React.useEffect(() => {
-    setNodes(initialNodes);
-  }, [initialNodes, setNodes]);
+    if (cleanedWorkflow) {
+      // Create nodes and edges inside useEffect to avoid dependency issues
+      const currentUiStates = uiStatesRef.current;
+      const currentUiTransitions = uiTransitionsRef.current;
+      const currentOnStateEdit = onStateEditRef.current;
+      const currentOnTransitionEdit = onTransitionEditRef.current;
+      const currentHandleTransitionUpdate = handleTransitionUpdateRef.current;
 
-  React.useEffect(() => {
-    setEdges(initialEdges);
-  }, [initialEdges, setEdges]);
+      const newNodes = currentUiStates.map((state) => ({
+        id: state.id,
+        type: 'stateNode',
+        position: state.position,
+        data: {
+          label: state.name,
+          state: state,
+          onEdit: currentOnStateEdit,
+        },
+      }));
+
+      const newEdges = currentUiTransitions.map((transition) => ({
+        id: transition.id,
+        type: 'transitionEdge',
+        source: transition.sourceStateId,
+        target: transition.targetStateId,
+        data: {
+          transition: transition,
+          onEdit: currentOnTransitionEdit,
+          onUpdate: currentHandleTransitionUpdate,
+        },
+        label: transition.definition.name || '',
+        animated: true,
+      }));
+
+      setNodes(newNodes);
+      setEdges(newEdges);
+      if (newNodes.length > 0) {
+        setIsInitialized(true);
+      }
+    } else {
+      setNodes([]);
+      setEdges([]);
+      setIsInitialized(false);
+    }
+  }, [
+    cleanedWorkflow?.id,
+    cleanedWorkflow?.layout?.updatedAt,
+    Object.keys(cleanedWorkflow?.configuration?.states || {}).length,
+    cleanedWorkflow?.layout?.states?.length
+  ]);
 
   const onConnect = useCallback(
     (params: Connection) => {
-      if (!workflow || !params.source || !params.target) return;
+      if (!cleanedWorkflow || !params.source || !params.target) return;
 
       // Create new transition definition
       const newTransitionDef: TransitionDefinition = {
@@ -191,7 +328,7 @@ export const WorkflowCanvas: React.FC<WorkflowCanvasProps> = ({
       };
 
       // Add transition to source state
-      const updatedStates = { ...workflow.configuration.states };
+      const updatedStates = { ...cleanedWorkflow.configuration.states };
       const sourceState = updatedStates[params.source];
       if (sourceState) {
         updatedStates[params.source] = {
@@ -201,33 +338,33 @@ export const WorkflowCanvas: React.FC<WorkflowCanvasProps> = ({
       }
 
       const updatedWorkflow: UIWorkflowData = {
-        ...workflow,
+        ...cleanedWorkflow,
         configuration: {
-          ...workflow.configuration,
+          ...cleanedWorkflow.configuration,
           states: updatedStates
         }
       };
 
       onWorkflowUpdate(updatedWorkflow);
     },
-    [workflow, onWorkflowUpdate]
+    [cleanedWorkflow, onWorkflowUpdate]
   );
 
   const onNodeDragStop = useCallback(
     (_event: React.MouseEvent, node: Node) => {
-      if (!workflow) return;
+      if (!cleanedWorkflow) return;
 
       // Update state position in layout
-      const updatedLayoutStates = workflow.layout.states.map((state) =>
+      const updatedLayoutStates = cleanedWorkflow.layout.states.map((state) =>
         state.id === node.id
           ? { ...state, position: node.position }
           : state
       );
 
       const updatedWorkflow: UIWorkflowData = {
-        ...workflow,
+        ...cleanedWorkflow,
         layout: {
-          ...workflow.layout,
+          ...cleanedWorkflow.layout,
           states: updatedLayoutStates,
           updatedAt: new Date().toISOString()
         }
@@ -235,12 +372,110 @@ export const WorkflowCanvas: React.FC<WorkflowCanvasProps> = ({
 
       onWorkflowUpdate(updatedWorkflow);
     },
-    [workflow, onWorkflowUpdate]
+    [cleanedWorkflow, onWorkflowUpdate]
+  );
+
+  // Handle double-click detection on pane
+  const lastClickTimeRef = useRef<number>(0);
+  const lastClickPositionRef = useRef<{ x: number; y: number }>({ x: 0, y: 0 });
+
+  const onPaneClick = useCallback(
+    (event: React.MouseEvent) => {
+      const now = Date.now();
+      const timeDiff = now - lastClickTimeRef.current;
+      const positionDiff = Math.abs(event.clientX - lastClickPositionRef.current.x) +
+                          Math.abs(event.clientY - lastClickPositionRef.current.y);
+
+      // Double-click detection: within 500ms and within 5px of previous click
+      if (timeDiff < 500 && positionDiff < 5) {
+        const currentWorkflow = workflowRef.current;
+        if (!currentWorkflow) return;
+
+        // Convert screen coordinates to flow coordinates (accounts for zoom/pan)
+        const screenPosition = { x: event.clientX, y: event.clientY };
+        const flowPosition = screenToFlowPosition(screenPosition);
+
+        // Center the node (typical state node is ~150x50px)
+        const position = {
+          x: flowPosition.x - 75, // Center horizontally
+          y: flowPosition.y - 25  // Center vertically
+        };
+
+
+
+      // Generate a unique state ID
+      const existingStateIds = Object.keys(currentWorkflow.configuration.states);
+
+      // Also check layout states to ensure we don't have any orphaned layout entries
+      const existingLayoutIds = currentWorkflow.layout.states.map(s => s.id);
+      const allExistingIds = new Set([...existingStateIds, ...existingLayoutIds]);
+
+      let newStateId = 'new-state';
+      let counter = 1;
+      while (allExistingIds.has(newStateId)) {
+        newStateId = `new-state-${counter}`;
+        counter++;
+      }
+
+
+
+      // Create new state definition
+      const newStateDefinition: StateDefinition = {
+        transitions: []
+      };
+
+      // First, clean up layout states to remove any orphaned entries
+      // (states that exist in layout but not in current configuration)
+      const currentConfigStateIds = Object.keys(currentWorkflow.configuration.states);
+      const cleanLayoutStates = currentWorkflow.layout.states.filter(layoutState =>
+        currentConfigStateIds.includes(layoutState.id)
+      );
+
+      // Add to configuration
+      const updatedStates = {
+        ...currentWorkflow.configuration.states,
+        [newStateId]: newStateDefinition
+      };
+
+      // Add to layout
+      const newLayoutState = {
+        id: newStateId,
+        position,
+        properties: {}
+      };
+
+      const updatedLayoutStates = [...cleanLayoutStates, newLayoutState];
+
+      const updatedWorkflow: UIWorkflowData = {
+        ...currentWorkflow,
+        configuration: {
+          ...currentWorkflow.configuration,
+          states: updatedStates
+        },
+        layout: {
+          ...currentWorkflow.layout,
+          states: updatedLayoutStates,
+          updatedAt: new Date().toISOString()
+        }
+      };
+
+
+        onWorkflowUpdate(updatedWorkflow);
+
+        // Reset click tracking after successful double-click
+        lastClickTimeRef.current = 0;
+      } else {
+        // Single click - update tracking
+        lastClickTimeRef.current = now;
+        lastClickPositionRef.current = { x: event.clientX, y: event.clientY };
+      }
+    },
+    [onWorkflowUpdate]
   );
 
 
 
-  if (!workflow) {
+  if (!cleanedWorkflow) {
     return (
       <div className="h-full flex items-center justify-center text-gray-500 dark:text-gray-400">
         <div className="text-center">
@@ -248,6 +483,15 @@ export const WorkflowCanvas: React.FC<WorkflowCanvasProps> = ({
           <h3 className="text-xl font-medium mb-2">No Workflow Selected</h3>
           <p>Select an entity and workflow from the sidebar to start editing</p>
         </div>
+      </div>
+    );
+  }
+
+  // Don't render ReactFlow until we have the workflow data loaded and initialized
+  if (cleanedWorkflow && uiStates.length > 0 && !isInitialized) {
+    return (
+      <div className="h-full flex items-center justify-center">
+        <div className="animate-spin rounded-full h-32 w-32 border-b-2 border-blue-500"></div>
       </div>
     );
   }
@@ -261,6 +505,7 @@ export const WorkflowCanvas: React.FC<WorkflowCanvasProps> = ({
         onEdgesChange={onEdgesChange}
         onConnect={onConnect}
         onNodeDragStop={onNodeDragStop}
+        onPaneClick={onPaneClick}
 
         nodeTypes={nodeTypes}
         edgeTypes={edgeTypes}
@@ -268,6 +513,9 @@ export const WorkflowCanvas: React.FC<WorkflowCanvasProps> = ({
         fitView
         className={darkMode ? 'dark' : ''}
         colorMode={darkMode ? 'dark' : 'light'}
+
+        // Disable default double-click zoom behavior
+        zoomOnDoubleClick={false}
       >
         <Background />
         <Controls />
@@ -309,5 +557,14 @@ export const WorkflowCanvas: React.FC<WorkflowCanvasProps> = ({
         </Panel>
       </ReactFlow>
     </div>
+  );
+};
+
+// Outer component that provides ReactFlow context
+export const WorkflowCanvas: React.FC<WorkflowCanvasProps> = (props) => {
+  return (
+    <ReactFlowProvider>
+      <WorkflowCanvasInner {...props} />
+    </ReactFlowProvider>
   );
 };

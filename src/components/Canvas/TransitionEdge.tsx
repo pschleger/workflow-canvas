@@ -139,11 +139,6 @@ export const TransitionEdge: React.FC<EdgeProps> = ({
 
       // Save the new label position to the transition
       if (transition && onUpdate) {
-        console.log('TransitionEdge: Updating transition position', {
-          transitionId: transition.id,
-          finalOffset,
-          transition
-        });
         const updatedTransition = {
           ...transition,
           labelPosition: finalOffset,

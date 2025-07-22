@@ -4,12 +4,12 @@ type: "always_apply"
 
 # Requirements Alignment Rules
 
-**Rule Type**: Always  
-**Description**: Ensures all code changes and feature implementations align with the project requirements and keeps the REQUIREMENTS.md file current.
+**Rule Type**: Always
+**Description**: Ensures all code changes and feature implementations align with the project requirements and keeps both the REQUIREMENTS.md file and features directory current.
 
 ## Requirements Compliance
 
-- **Mandatory Alignment**: All code changes, new features, and modifications must align with the content and objectives defined in `REQUIREMENTS.md`
+- **Mandatory Alignment**: All code changes, new features, and modifications must align with the content and objectives defined in `REQUIREMENTS.md` and the detailed specifications in the `features/` directory
 - **Feature Scope**: Only implement features that are explicitly mentioned in the requirements or are necessary supporting functionality
 - **Tech Stack Adherence**: Follow the recommended tech stack specified in REQUIREMENTS.md:
   - React with TypeScript
@@ -20,12 +20,26 @@ type: "always_apply"
 
 ## Requirements Documentation Maintenance
 
-- **Live Updates**: When new requirements are discussed or agreed upon during a chat or agent session, immediately update `REQUIREMENTS.md` to reflect these changes
-- **Version Control**: Treat `REQUIREMENTS.md` as a living document that evolves with the project
+- **Live Updates**: When new requirements are discussed or agreed upon during a chat or agent session, immediately update both `REQUIREMENTS.md` and the relevant files in the `features/` directory
+- **Dual Documentation System**: Maintain consistency between:
+  - `REQUIREMENTS.md` - High-level overview with links to detailed specifications
+  - `features/` directory - Detailed feature specifications and implementation guidance
+- **Version Control**: Treat both `REQUIREMENTS.md` and the `features/` directory as living documentation that evolves with the project
 - **Change Documentation**: When updating requirements, clearly document:
   - What was added or modified
   - Why the change was necessary
   - How it impacts existing features or implementation
+
+## Features Directory Management
+
+- **Always Update Features Directory**: When adding new features or modifying existing ones, create or update the corresponding file in the `features/` directory
+- **Feature File Structure**: Each feature file should contain:
+  - Description and overview
+  - Core features and behaviors
+  - Technical implementation details
+  - User stories and requirements
+- **Cross-Reference Maintenance**: Ensure `REQUIREMENTS.md` properly references feature files and vice versa
+- **Index Updates**: Update `features/README.md` when adding new feature files
 
 ## Implementation Validation
 

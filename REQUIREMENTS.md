@@ -69,6 +69,42 @@ This PRD is designed to be used with LLMs (e.g., ChatGPT, Claude, Copilot) to:
 - JSON-compatible workflow model
 - Readme for replacing dummy backend with real API
 
+## Features
+
+This section provides an overview of the key features. For detailed specifications, see the individual feature files in the [features/](./features/) directory.
+
+### Canvas Interaction Features
+Interactive canvas features for direct workflow manipulation. See [features/canvas-interaction.md](./features/canvas-interaction.md) for details.
+
+- **Double-click to Add State**: Create new states by double-clicking on the canvas
+- **Drag and Drop**: Rearrange states by dragging them around the canvas
+- **Connection Creation**: Create transitions by dragging between state handles
+- **Visual State Indicators**: Color-coded states (green for initial, red for final)
+- **Zoom and Pan**: Navigate large workflows with zoom and pan controls
+- **Quick Help Panel**: On-screen guidance for available interactions
+
+### State Management Features
+Backend data consistency and state management. See [features/state-management.md](./features/state-management.md) for details.
+
+- **Unique State ID Generation**: Automatic generation of unique state identifiers
+- **State Cleanup**: Maintains synchronization between configuration and layout
+- **Position Calculation**: Accurate positioning of new states on the canvas
+
+### User Interface Features
+Visual design and user experience features. See [features/user-interface.md](./features/user-interface.md) for details.
+
+- **Dark Mode Support**: Toggle between light and dark themes
+- **Responsive Design**: Adaptive interface for different screen sizes
+- **Real-time Updates**: Immediate visual feedback for all operations
+
+### Editing Features
+Comprehensive editing capabilities with safety measures and history. See [features/editing.md](./features/editing.md) for details.
+
+- **State Deletion**: Delete states via button or keyboard shortcut (Backspace)
+- **Deletion Warnings**: Confirmation dialogs before deleting elements
+- **Session History**: Track all configuration changes in session storage
+- **Undo/Redo**: Undo button and keyboard shortcuts (Cmd+Z/Ctrl+Z) for change history
+
 ## Notes
 Focus on developer usability and rapid iteration. Architecture should favor modular, testable components with clean separation between layout and logic.
 ## Recommended Tech Stack (Elaborated)

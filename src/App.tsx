@@ -160,15 +160,27 @@ function App() {
   const handleStateDelete = useCallback((stateId: string) => {
     if (!currentWorkflow) return;
 
+
+
     // Remove the state from configuration
     const updatedStates = { ...currentWorkflow.configuration.states };
     delete updatedStates[stateId];
+
+
 
     // Remove transitions that reference this state
     Object.keys(updatedStates).forEach(sourceStateId => {
       const state = updatedStates[sourceStateId];
       state.transitions = state.transitions.filter(t => t.next !== stateId);
     });
+
+    // Handle initial state deletion - set to first remaining state or empty
+    let updatedInitialState = currentWorkflow.configuration.initialState;
+    if (updatedInitialState === stateId) {
+      const remainingStates = Object.keys(updatedStates);
+      updatedInitialState = remainingStates.length > 0 ? remainingStates[0] : '';
+
+    }
 
     // Remove from layout
     const updatedLayoutStates = currentWorkflow.layout.states.filter(s => s.id !== stateId);
@@ -177,6 +189,7 @@ function App() {
       ...currentWorkflow,
       configuration: {
         ...currentWorkflow.configuration,
+        initialState: updatedInitialState,
         states: updatedStates
       },
       layout: {
@@ -184,6 +197,8 @@ function App() {
         states: updatedLayoutStates
       }
     };
+
+
 
     handleWorkflowUpdate(updatedWorkflow);
   }, [currentWorkflow, handleWorkflowUpdate]);
