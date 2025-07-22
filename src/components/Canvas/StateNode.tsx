@@ -2,22 +2,20 @@ import React from 'react';
 import { Handle, Position } from '@xyflow/react';
 import type { NodeProps } from '@xyflow/react';
 import { Edit, Play, Square } from 'lucide-react';
-import type { WorkflowState } from '../../types/workflow';
+import type { UIStateData } from '../../types/workflow';
 
 interface StateNodeData {
   label: string;
-  state: WorkflowState;
-  onEdit: (state: WorkflowState) => void;
-  isInitial?: boolean;
-  isFinal?: boolean;
+  state: UIStateData;
+  onEdit: (stateId: string) => void;
 }
 
 export const StateNode: React.FC<NodeProps> = ({ data, selected }) => {
-  const { state, onEdit, isInitial, isFinal } = data as unknown as StateNodeData;
+  const { state, onEdit } = data as unknown as StateNodeData;
 
   const handleEdit = (e: React.MouseEvent) => {
     e.stopPropagation();
-    onEdit(state);
+    onEdit(state.id);
   };
 
   const getNodeStyle = () => {
@@ -27,9 +25,9 @@ export const StateNode: React.FC<NodeProps> = ({ data, selected }) => {
       baseClasses += " ring-2 ring-blue-500 ring-offset-2 dark:ring-offset-gray-800";
     }
 
-    if (isInitial) {
+    if (state.isInitial) {
       baseClasses += " border-green-500 bg-green-50 dark:bg-green-900/20";
-    } else if (isFinal) {
+    } else if (state.isFinal) {
       baseClasses += " border-red-500 bg-red-50 dark:bg-red-900/20";
     } else {
       baseClasses += " border-gray-300 dark:border-gray-600 hover:border-blue-400 dark:hover:border-blue-500";
@@ -39,15 +37,15 @@ export const StateNode: React.FC<NodeProps> = ({ data, selected }) => {
   };
 
   const getIconColor = () => {
-    if (isInitial) return "text-green-600 dark:text-green-400";
-    if (isFinal) return "text-red-600 dark:text-red-400";
+    if (state.isInitial) return "text-green-600 dark:text-green-400";
+    if (state.isFinal) return "text-red-600 dark:text-red-400";
     return "text-gray-600 dark:text-gray-400";
   };
 
   return (
     <div className={getNodeStyle()}>
       {/* Input Handle */}
-      {!isInitial && (
+      {!state.isInitial && (
         <Handle
           type="target"
           position={Position.Left}
@@ -60,9 +58,9 @@ export const StateNode: React.FC<NodeProps> = ({ data, selected }) => {
         <div className="flex items-center space-x-2 flex-1">
           {/* State Type Icon */}
           <div className={`flex-shrink-0 ${getIconColor()}`}>
-            {isInitial ? (
+            {state.isInitial ? (
               <Play size={16} fill="currentColor" />
-            ) : isFinal ? (
+            ) : state.isFinal ? (
               <Square size={16} fill="currentColor" />
             ) : (
               <div className="w-4 h-4 rounded-full border-2 border-current" />
@@ -74,11 +72,7 @@ export const StateNode: React.FC<NodeProps> = ({ data, selected }) => {
             <div className="font-medium text-gray-900 dark:text-white truncate">
               {state.name}
             </div>
-            {state.description && (
-              <div className="text-xs text-gray-500 dark:text-gray-400 truncate">
-                {state.description}
-              </div>
-            )}
+
           </div>
         </div>
 
@@ -113,7 +107,7 @@ export const StateNode: React.FC<NodeProps> = ({ data, selected }) => {
       )}
 
       {/* Output Handle */}
-      {!isFinal && (
+      {!state.isFinal && (
         <Handle
           type="source"
           position={Position.Right}

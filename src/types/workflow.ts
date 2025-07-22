@@ -7,13 +7,55 @@ export interface Entity {
   workflowCount: number;
 }
 
-// Functional workflow state (no visual/positional data)
-export interface WorkflowState {
-  id: string;
+// Schema-compliant types based on JSON schemas
+
+// Query condition type (from QueryCondition.json)
+export interface QueryCondition {
+  type: string;
+  [key: string]: any; // Additional properties based on condition type
+}
+
+// Externalized function configuration (from ExternalizedFunctionConfig.json)
+export interface ExternalizedFunctionConfig {
+  attachEntity?: boolean;
+  calculationNodesTags?: string;
+  responseTimeoutMs?: number;
+  retryPolicy?: string;
+  context?: string;
+  [key: string]: any; // Additional properties allowed
+}
+
+// Externalized processor definition (from ExternalizedProcessorDefinition.json)
+export interface ExternalizedProcessorDefinition {
   name: string;
-  description?: string;
-  isInitial?: boolean;
-  isFinal?: boolean;
+  executionMode?: 'SYNC' | 'ASYNC_SAME_TX' | 'ASYNC_NEW_TX';
+  config?: ExternalizedFunctionConfig;
+}
+
+// Transition definition (from TransitionDefinition.json)
+export interface TransitionDefinition {
+  name?: string;
+  next: string; // Target state code
+  manual?: boolean;
+  disabled?: boolean;
+  processors?: ExternalizedProcessorDefinition[];
+  criterion?: QueryCondition;
+}
+
+// State definition (from StateDefinition.json)
+export interface StateDefinition {
+  transitions: TransitionDefinition[];
+}
+
+// Workflow configuration (from WorkflowConfiguration.json)
+export interface WorkflowConfiguration {
+  version: string;
+  name: string;
+  desc?: string;
+  initialState: string;
+  active?: boolean;
+  criterion?: QueryCondition;
+  states: Record<string, StateDefinition>; // Map of state codes to state definitions
 }
 
 // Visual/positional data for canvas layout
@@ -26,28 +68,6 @@ export interface StateLayout {
   properties?: Record<string, any>; // colors, styling, etc.
 }
 
-export interface TransitionCondition {
-  field: string;
-  operator: 'equals' | 'not_equals' | 'greater_than' | 'less_than' | 'contains';
-  value: any;
-}
-
-export interface TransitionAction {
-  type: 'set_field' | 'call_api' | 'send_notification';
-  parameters: Record<string, any>;
-}
-
-// Functional transition (no visual/positional data)
-export interface WorkflowTransition {
-  id: string;
-  name?: string;
-  sourceStateId: string;
-  targetStateId: string;
-  conditions?: TransitionCondition[];
-  actions?: TransitionAction[];
-  description?: string;
-}
-
 // Visual/positional data for transition layout
 export interface TransitionLayout {
   id: string;
@@ -55,19 +75,6 @@ export interface TransitionLayout {
     x: number;
     y: number;
   };
-}
-
-// Workflow configuration (functional specification only)
-export interface WorkflowConfiguration {
-  id: string;
-  entityId: string;
-  name: string;
-  description?: string;
-  states: WorkflowState[];
-  transitions: WorkflowTransition[];
-  version: number;
-  createdAt: string;
-  updatedAt: string;
 }
 
 // Canvas layout information (visual/positional data only)
@@ -86,6 +93,36 @@ export interface WorkflowSummary {
   stateCount: number;
   transitionCount: number;
   updatedAt: string;
+}
+
+// Combined workflow data for UI rendering (merges schema config with layout)
+export interface UIWorkflowData {
+  id: string;
+  entityId: string;
+  configuration: WorkflowConfiguration;
+  layout: CanvasLayout;
+  createdAt: string;
+  updatedAt: string;
+}
+
+// UI-specific state representation (combines schema state with layout)
+export interface UIStateData {
+  id: string; // state code from schema
+  name: string;
+  definition: StateDefinition;
+  position: { x: number; y: number };
+  properties?: Record<string, any>;
+  isInitial: boolean;
+  isFinal: boolean; // computed based on transitions
+}
+
+// UI-specific transition representation (flattened from schema structure)
+export interface UITransitionData {
+  id: string; // generated unique ID
+  sourceStateId: string;
+  targetStateId: string;
+  definition: TransitionDefinition;
+  labelPosition?: { x: number; y: number };
 }
 
 // API Response types
@@ -110,7 +147,7 @@ export interface WorkflowWithLayoutResponse extends ApiResponse<{
 export interface AppState {
   selectedEntityId: string | null;
   selectedWorkflowId: string | null;
-  currentWorkflow: Workflow | null;
+  currentWorkflow: UIWorkflowData | null;
   entities: Entity[];
   workflows: WorkflowSummary[];
   isLoading: boolean;
@@ -125,9 +162,8 @@ export interface FlowNode {
   position: { x: number; y: number };
   data: {
     label: string;
-    state: WorkflowState;
-    layout: StateLayout;
-    onEdit: (state: WorkflowState) => void;
+    state: UIStateData;
+    onEdit: (stateId: string, definition: StateDefinition) => void;
   };
 }
 
@@ -137,9 +173,8 @@ export interface FlowEdge {
   source: string;
   target: string;
   data: {
-    transition: WorkflowTransition;
-    layout: TransitionLayout;
-    onEdit: (transition: WorkflowTransition) => void;
+    transition: UITransitionData;
+    onEdit: (transitionId: string, definition: TransitionDefinition) => void;
   };
 }
 

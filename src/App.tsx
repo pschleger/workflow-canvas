@@ -5,37 +5,24 @@ import { WorkflowCanvas } from './components/Canvas/WorkflowCanvas';
 import { StateEditor } from './components/Editors/StateEditor';
 import { TransitionEditor } from './components/Editors/TransitionEditor';
 import { MockApiService } from './services/mockApi';
-import type { WorkflowConfiguration, CanvasLayout, WorkflowState, WorkflowTransition } from './types/workflow';
+import type { WorkflowConfiguration, CanvasLayout, UIWorkflowData, StateDefinition, TransitionDefinition } from './types/workflow';
 
-// Helper function to combine configuration and layout into a legacy Workflow format for UI compatibility
-function combineWorkflowData(config: WorkflowConfiguration, layout: CanvasLayout) {
-  const stateLayoutMap = new Map(layout.states.map(s => [s.id, s]));
-  const transitionLayoutMap = new Map(layout.transitions.map(t => [t.id, t]));
-
+// Helper function to combine configuration and layout into UI workflow data
+function combineWorkflowData(workflowId: string, entityId: string, config: WorkflowConfiguration, layout: CanvasLayout): UIWorkflowData {
   return {
-    ...config,
-    states: config.states.map(state => {
-      const layoutInfo = stateLayoutMap.get(state.id);
-      return {
-        ...state,
-        position: layoutInfo?.position || { x: 0, y: 0 },
-        properties: layoutInfo?.properties
-      };
-    }),
-    transitions: config.transitions.map(transition => {
-      const layoutInfo = transitionLayoutMap.get(transition.id);
-      return {
-        ...transition,
-        labelPosition: layoutInfo?.labelPosition
-      };
-    })
+    id: workflowId,
+    entityId: entityId,
+    configuration: config,
+    layout: layout,
+    createdAt: new Date().toISOString(), // Mock creation time
+    updatedAt: layout.updatedAt
   };
 }
 
 function App() {
   const [selectedEntityId, setSelectedEntityId] = useState<string | null>(null);
   const [selectedWorkflowId, setSelectedWorkflowId] = useState<string | null>(null);
-  const [currentWorkflow, setCurrentWorkflow] = useState<any | null>(null); // Combined workflow data for UI
+  const [currentWorkflow, setCurrentWorkflow] = useState<UIWorkflowData | null>(null);
   const [darkMode, setDarkMode] = useState(() => {
     // Load dark mode preference from localStorage
     const saved = localStorage.getItem('darkMode');
@@ -44,8 +31,10 @@ function App() {
   const [loading, setLoading] = useState(false);
 
   // Editor states
-  const [editingState, setEditingState] = useState<WorkflowState | null>(null);
-  const [editingTransition, setEditingTransition] = useState<WorkflowTransition | null>(null);
+  const [editingStateId, setEditingStateId] = useState<string | null>(null);
+  const [editingStateDefinition, setEditingStateDefinition] = useState<StateDefinition | null>(null);
+  const [editingTransitionId, setEditingTransitionId] = useState<string | null>(null);
+  const [editingTransitionDefinition, setEditingTransitionDefinition] = useState<TransitionDefinition | null>(null);
   const [stateEditorOpen, setStateEditorOpen] = useState(false);
   const [transitionEditorOpen, setTransitionEditorOpen] = useState(false);
 
@@ -65,8 +54,8 @@ function App() {
       ]);
 
       if (configResponse.success && layoutResponse.success) {
-        // Combine the segregated data for UI compatibility
-        const combinedWorkflow = combineWorkflowData(configResponse.data, layoutResponse.data);
+        // Combine the segregated data for UI
+        const combinedWorkflow = combineWorkflowData(workflowId, entityId, configResponse.data, layoutResponse.data);
         setCurrentWorkflow(combinedWorkflow);
       } else {
         console.error('Failed to load workflow:', configResponse.message || layoutResponse.message);
@@ -80,117 +69,120 @@ function App() {
     }
   }, []);
 
-  const handleWorkflowUpdate = useCallback(async (workflow: any) => {
+  const handleWorkflowUpdate = useCallback(async (workflow: UIWorkflowData) => {
     setCurrentWorkflow(workflow);
 
-    // Split the combined workflow back into configuration and layout for saving
+    // Save both configuration and layout
     try {
-      const configuration: WorkflowConfiguration = {
-        id: workflow.id,
-        entityId: workflow.entityId,
-        name: workflow.name,
-        description: workflow.description,
-        version: workflow.version,
-        createdAt: workflow.createdAt,
-        updatedAt: workflow.updatedAt,
-        states: workflow.states.map((state: any) => ({
-          id: state.id,
-          name: state.name,
-          description: state.description,
-          isInitial: state.isInitial,
-          isFinal: state.isFinal
-        })),
-        transitions: workflow.transitions.map((transition: any) => ({
-          id: transition.id,
-          name: transition.name,
-          sourceStateId: transition.sourceStateId,
-          targetStateId: transition.targetStateId,
-          conditions: transition.conditions,
-          actions: transition.actions,
-          description: transition.description
-        }))
-      };
-
-      const layout: CanvasLayout = {
-        workflowId: workflow.id,
-        version: workflow.version,
-        updatedAt: workflow.updatedAt,
-        states: workflow.states.map((state: any) => ({
-          id: state.id,
-          position: state.position,
-          properties: state.properties
-        })),
-        transitions: workflow.transitions.map((transition: any) => ({
-          id: transition.id,
-          labelPosition: transition.labelPosition
-        }))
-      };
-
-      // Save both configuration and layout
       await Promise.all([
-        MockApiService.updateWorkflowConfiguration(workflow.entityId, configuration),
-        MockApiService.updateCanvasLayout(workflow.entityId, layout)
+        MockApiService.updateWorkflowConfiguration(workflow.entityId, workflow.id, workflow.configuration),
+        MockApiService.updateCanvasLayout(workflow.entityId, workflow.layout)
       ]);
     } catch (error) {
       console.error('Error saving workflow:', error);
     }
   }, []);
 
-  const handleStateEdit = useCallback((state: WorkflowState) => {
-    setEditingState(state);
-    setStateEditorOpen(true);
-  }, []);
-
-  const handleTransitionEdit = useCallback((transition: WorkflowTransition) => {
-    setEditingTransition(transition);
-    setTransitionEditorOpen(true);
-  }, []);
-
-  const handleStateSave = useCallback((state: WorkflowState) => {
+  const handleStateEdit = useCallback((stateId: string) => {
     if (!currentWorkflow) return;
 
-    const updatedStates = currentWorkflow.states.some(s => s.id === state.id)
-      ? currentWorkflow.states.map(s => s.id === state.id ? state : s)
-      : [...currentWorkflow.states, state];
+    const stateDefinition = currentWorkflow.configuration.states[stateId];
+    if (stateDefinition) {
+      setEditingStateId(stateId);
+      setEditingStateDefinition(stateDefinition);
+      setStateEditorOpen(true);
+    }
+  }, [currentWorkflow]);
 
-    const updatedWorkflow: Workflow = {
+  const handleTransitionEdit = useCallback((transitionId: string) => {
+    if (!currentWorkflow) return;
+
+    // Parse transition ID to find the transition definition
+    const [sourceStateId, transitionIndex] = transitionId.split('-');
+    const sourceState = currentWorkflow.configuration.states[sourceStateId];
+    if (sourceState && sourceState.transitions[parseInt(transitionIndex)]) {
+      setEditingTransitionId(transitionId);
+      setEditingTransitionDefinition(sourceState.transitions[parseInt(transitionIndex)]);
+      setTransitionEditorOpen(true);
+    }
+  }, [currentWorkflow]);
+
+  const handleStateSave = useCallback((stateId: string, definition: StateDefinition) => {
+    if (!currentWorkflow) return;
+
+    const updatedStates = {
+      ...currentWorkflow.configuration.states,
+      [stateId]: definition
+    };
+
+    const updatedWorkflow: UIWorkflowData = {
       ...currentWorkflow,
-      states: updatedStates,
-      updatedAt: new Date().toISOString(),
+      configuration: {
+        ...currentWorkflow.configuration,
+        states: updatedStates
+      }
     };
 
     handleWorkflowUpdate(updatedWorkflow);
   }, [currentWorkflow, handleWorkflowUpdate]);
 
-  const handleTransitionSave = useCallback((transition: WorkflowTransition) => {
+  const handleTransitionSave = useCallback((transitionId: string, definition: TransitionDefinition) => {
     if (!currentWorkflow) return;
 
-    const updatedTransitions = currentWorkflow.transitions.some(t => t.id === transition.id)
-      ? currentWorkflow.transitions.map(t => t.id === transition.id ? transition : t)
-      : [...currentWorkflow.transitions, transition];
+    // Parse transition ID to update the correct transition
+    const [sourceStateId, transitionIndex] = transitionId.split('-');
+    const sourceState = currentWorkflow.configuration.states[sourceStateId];
 
-    const updatedWorkflow: Workflow = {
-      ...currentWorkflow,
-      transitions: updatedTransitions,
-      updatedAt: new Date().toISOString(),
-    };
+    if (sourceState) {
+      const updatedTransitions = [...sourceState.transitions];
+      updatedTransitions[parseInt(transitionIndex)] = definition;
 
-    handleWorkflowUpdate(updatedWorkflow);
+      const updatedStates = {
+        ...currentWorkflow.configuration.states,
+        [sourceStateId]: {
+          ...sourceState,
+          transitions: updatedTransitions
+        }
+      };
+
+      const updatedWorkflow: UIWorkflowData = {
+        ...currentWorkflow,
+        configuration: {
+          ...currentWorkflow.configuration,
+          states: updatedStates
+        }
+      };
+
+      handleWorkflowUpdate(updatedWorkflow);
+    }
   }, [currentWorkflow, handleWorkflowUpdate]);
 
   const handleStateDelete = useCallback((stateId: string) => {
     if (!currentWorkflow) return;
 
-    const updatedStates = currentWorkflow.states.filter(s => s.id !== stateId);
-    const updatedTransitions = currentWorkflow.transitions.filter(
-      t => t.sourceStateId !== stateId && t.targetStateId !== stateId
-    );
+    // Remove the state from configuration
+    const updatedStates = { ...currentWorkflow.configuration.states };
+    delete updatedStates[stateId];
 
-    const updatedWorkflow: Workflow = {
+    // Remove transitions that reference this state
+    Object.keys(updatedStates).forEach(sourceStateId => {
+      const state = updatedStates[sourceStateId];
+      state.transitions = state.transitions.filter(t => t.next !== stateId);
+    });
+
+    // Remove from layout
+    const updatedLayoutStates = currentWorkflow.layout.states.filter(s => s.id !== stateId);
+
+    const updatedWorkflow: UIWorkflowData = {
       ...currentWorkflow,
-      states: updatedStates,
-      transitions: updatedTransitions,
-      updatedAt: new Date().toISOString(),
+      configuration: {
+        ...currentWorkflow.configuration,
+        states: updatedStates
+      },
+      layout: {
+        ...currentWorkflow.layout,
+        states: updatedLayoutStates
+      }
     };
 
     handleWorkflowUpdate(updatedWorkflow);
@@ -199,15 +191,31 @@ function App() {
   const handleTransitionDelete = useCallback((transitionId: string) => {
     if (!currentWorkflow) return;
 
-    const updatedTransitions = currentWorkflow.transitions.filter(t => t.id !== transitionId);
+    // Parse transition ID to remove the correct transition
+    const [sourceStateId, transitionIndex] = transitionId.split('-');
+    const sourceState = currentWorkflow.configuration.states[sourceStateId];
 
-    const updatedWorkflow: Workflow = {
-      ...currentWorkflow,
-      transitions: updatedTransitions,
-      updatedAt: new Date().toISOString(),
-    };
+    if (sourceState) {
+      const updatedTransitions = sourceState.transitions.filter((_, index) => index !== parseInt(transitionIndex));
 
-    handleWorkflowUpdate(updatedWorkflow);
+      const updatedStates = {
+        ...currentWorkflow.configuration.states,
+        [sourceStateId]: {
+          ...sourceState,
+          transitions: updatedTransitions
+        }
+      };
+
+      const updatedWorkflow: UIWorkflowData = {
+        ...currentWorkflow,
+        configuration: {
+          ...currentWorkflow.configuration,
+          states: updatedStates
+        }
+      };
+
+      handleWorkflowUpdate(updatedWorkflow);
+    }
   }, [currentWorkflow, handleWorkflowUpdate]);
 
   const handleToggleDarkMode = useCallback(() => {
@@ -305,22 +313,26 @@ function App() {
 
       {/* Editors */}
       <StateEditor
-        state={editingState}
+        stateId={editingStateId}
+        stateDefinition={editingStateDefinition}
         isOpen={stateEditorOpen}
         onClose={() => {
           setStateEditorOpen(false);
-          setEditingState(null);
+          setEditingStateId(null);
+          setEditingStateDefinition(null);
         }}
         onSave={handleStateSave}
         onDelete={handleStateDelete}
       />
 
       <TransitionEditor
-        transition={editingTransition}
+        transitionId={editingTransitionId}
+        transitionDefinition={editingTransitionDefinition}
         isOpen={transitionEditorOpen}
         onClose={() => {
           setTransitionEditorOpen(false);
-          setEditingTransition(null);
+          setEditingTransitionId(null);
+          setEditingTransitionDefinition(null);
         }}
         onSave={handleTransitionSave}
         onDelete={handleTransitionDelete}

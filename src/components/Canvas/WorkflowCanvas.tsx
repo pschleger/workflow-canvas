@@ -12,28 +12,15 @@ import {
 import type { Node, Edge, Connection } from '@xyflow/react';
 import '@xyflow/react/dist/style.css';
 
-import type { WorkflowState, WorkflowTransition } from '../../types/workflow';
-
-// Combined workflow type for UI compatibility (includes both config and layout data)
-interface CombinedWorkflow {
-  id: string;
-  entityId: string;
-  name: string;
-  description?: string;
-  states: (WorkflowState & { position: { x: number; y: number }; properties?: Record<string, any> })[];
-  transitions: (WorkflowTransition & { labelPosition?: { x: number; y: number } })[];
-  version: number;
-  createdAt: string;
-  updatedAt: string;
-}
+import type { UIWorkflowData, UIStateData, UITransitionData, StateDefinition, TransitionDefinition } from '../../types/workflow';
 import { StateNode } from './StateNode';
 import { TransitionEdge } from './TransitionEdge';
 
 interface WorkflowCanvasProps {
-  workflow: CombinedWorkflow | null;
-  onWorkflowUpdate: (workflow: CombinedWorkflow) => void;
-  onStateEdit: (state: WorkflowState) => void;
-  onTransitionEdit: (transition: WorkflowTransition) => void;
+  workflow: UIWorkflowData | null;
+  onWorkflowUpdate: (workflow: UIWorkflowData) => void;
+  onStateEdit: (stateId: string) => void;
+  onTransitionEdit: (transitionId: string) => void;
   darkMode: boolean;
 }
 
@@ -45,6 +32,50 @@ const edgeTypes = {
   transitionEdge: TransitionEdge,
 };
 
+// Helper function to convert schema workflow to UI state data
+function createUIStateData(workflow: UIWorkflowData): UIStateData[] {
+  const stateLayoutMap = new Map(workflow.layout.states.map(s => [s.id, s]));
+
+  return Object.entries(workflow.configuration.states).map(([stateId, definition]) => {
+    const layout = stateLayoutMap.get(stateId);
+    const isInitial = workflow.configuration.initialState === stateId;
+    const isFinal = definition.transitions.length === 0;
+
+    return {
+      id: stateId,
+      name: stateId, // Use state ID as name since schema doesn't have separate names
+      definition,
+      position: layout?.position || { x: 100, y: 100 },
+      properties: layout?.properties,
+      isInitial,
+      isFinal
+    };
+  });
+}
+
+// Helper function to create UI transition data
+function createUITransitionData(workflow: UIWorkflowData): UITransitionData[] {
+  const transitionLayoutMap = new Map(workflow.layout.transitions.map(t => [t.id, t]));
+  const transitions: UITransitionData[] = [];
+
+  Object.entries(workflow.configuration.states).forEach(([sourceStateId, stateDefinition]) => {
+    stateDefinition.transitions.forEach((transitionDef, index) => {
+      const transitionId = `${sourceStateId}-${index}`;
+      const layout = transitionLayoutMap.get(transitionId);
+
+      transitions.push({
+        id: transitionId,
+        sourceStateId,
+        targetStateId: transitionDef.next,
+        definition: transitionDef,
+        labelPosition: layout?.labelPosition
+      });
+    });
+  });
+
+  return transitions;
+}
+
 export const WorkflowCanvas: React.FC<WorkflowCanvasProps> = ({
   workflow,
   onWorkflowUpdate,
@@ -52,11 +83,18 @@ export const WorkflowCanvas: React.FC<WorkflowCanvasProps> = ({
   onTransitionEdit,
   darkMode
 }) => {
-  // Convert workflow data to React Flow format
+  // Convert schema workflow to UI data
+  const uiStates = useMemo(() => {
+    return workflow ? createUIStateData(workflow) : [];
+  }, [workflow]);
+
+  const uiTransitions = useMemo(() => {
+    return workflow ? createUITransitionData(workflow) : [];
+  }, [workflow]);
+
+  // Convert UI data to React Flow format
   const initialNodes: Node[] = useMemo(() => {
-    if (!workflow) return [];
-    
-    return workflow.states.map((state) => ({
+    return uiStates.map((state) => ({
       id: state.id,
       type: 'stateNode',
       position: state.position,
@@ -64,32 +102,56 @@ export const WorkflowCanvas: React.FC<WorkflowCanvasProps> = ({
         label: state.name,
         state: state,
         onEdit: onStateEdit,
-        isInitial: state.isInitial,
-        isFinal: state.isFinal,
       },
     }));
-  }, [workflow, onStateEdit]);
+  }, [uiStates, onStateEdit]);
 
-  const handleTransitionUpdate = useCallback((updatedTransition: WorkflowTransition) => {
+  const handleTransitionUpdate = useCallback((updatedTransition: UITransitionData) => {
     if (!workflow) return;
 
-    const updatedTransitions = workflow.transitions.map(t =>
-      t.id === updatedTransition.id ? updatedTransition : t
-    );
+    console.log('WorkflowCanvas: Handling transition update', {
+      transitionId: updatedTransition.id,
+      labelPosition: updatedTransition.labelPosition,
+      existingLayoutTransitions: workflow.layout.transitions
+    });
 
-    const updatedWorkflow: Workflow = {
+    // Find existing layout transition or create new one
+    const existingLayoutTransitions = workflow.layout.transitions;
+    const existingIndex = existingLayoutTransitions.findIndex(t => t.id === updatedTransition.id);
+
+    let updatedLayoutTransitions;
+    if (existingIndex >= 0) {
+      // Update existing layout transition
+      console.log('WorkflowCanvas: Updating existing layout transition');
+      updatedLayoutTransitions = existingLayoutTransitions.map(t =>
+        t.id === updatedTransition.id
+          ? { ...t, labelPosition: updatedTransition.labelPosition }
+          : t
+      );
+    } else {
+      // Create new layout transition
+      console.log('WorkflowCanvas: Creating new layout transition');
+      const newLayoutTransition = {
+        id: updatedTransition.id,
+        labelPosition: updatedTransition.labelPosition
+      };
+      updatedLayoutTransitions = [...existingLayoutTransitions, newLayoutTransition];
+    }
+
+    const updatedWorkflow: UIWorkflowData = {
       ...workflow,
-      transitions: updatedTransitions,
-      updatedAt: new Date().toISOString(),
+      layout: {
+        ...workflow.layout,
+        transitions: updatedLayoutTransitions,
+        updatedAt: new Date().toISOString()
+      }
     };
 
     onWorkflowUpdate(updatedWorkflow);
   }, [workflow, onWorkflowUpdate]);
 
   const initialEdges: Edge[] = useMemo(() => {
-    if (!workflow) return [];
-
-    return workflow.transitions.map((transition) => ({
+    return uiTransitions.map((transition) => ({
       id: transition.id,
       type: 'transitionEdge',
       source: transition.sourceStateId,
@@ -99,10 +161,10 @@ export const WorkflowCanvas: React.FC<WorkflowCanvasProps> = ({
         onEdit: onTransitionEdit,
         onUpdate: handleTransitionUpdate,
       },
-      label: transition.name || '',
+      label: transition.definition.name || '',
       animated: true,
     }));
-  }, [workflow, onTransitionEdit, handleTransitionUpdate]);
+  }, [uiTransitions, onTransitionEdit, handleTransitionUpdate]);
 
   const [nodes, setNodes, onNodesChange] = useNodesState(initialNodes);
   const [edges, setEdges, onEdgesChange] = useEdgesState(initialEdges);
@@ -120,21 +182,30 @@ export const WorkflowCanvas: React.FC<WorkflowCanvasProps> = ({
     (params: Connection) => {
       if (!workflow || !params.source || !params.target) return;
 
-      // Create new transition
-      const newTransition: WorkflowTransition = {
-        id: `transition-${Date.now()}`,
-        sourceStateId: params.source,
-        targetStateId: params.target,
+      // Create new transition definition
+      const newTransitionDef: TransitionDefinition = {
         name: 'New Transition',
-        conditions: [],
-        actions: [],
+        next: params.target,
+        manual: false,
+        disabled: false
       };
 
-      // Update workflow with new transition
-      const updatedWorkflow: Workflow = {
+      // Add transition to source state
+      const updatedStates = { ...workflow.configuration.states };
+      const sourceState = updatedStates[params.source];
+      if (sourceState) {
+        updatedStates[params.source] = {
+          ...sourceState,
+          transitions: [...sourceState.transitions, newTransitionDef]
+        };
+      }
+
+      const updatedWorkflow: UIWorkflowData = {
         ...workflow,
-        transitions: [...workflow.transitions, newTransition],
-        updatedAt: new Date().toISOString(),
+        configuration: {
+          ...workflow.configuration,
+          states: updatedStates
+        }
       };
 
       onWorkflowUpdate(updatedWorkflow);
@@ -146,17 +217,20 @@ export const WorkflowCanvas: React.FC<WorkflowCanvasProps> = ({
     (_event: React.MouseEvent, node: Node) => {
       if (!workflow) return;
 
-      // Update state position in workflow
-      const updatedStates = workflow.states.map((state) =>
+      // Update state position in layout
+      const updatedLayoutStates = workflow.layout.states.map((state) =>
         state.id === node.id
           ? { ...state, position: node.position }
           : state
       );
 
-      const updatedWorkflow: Workflow = {
+      const updatedWorkflow: UIWorkflowData = {
         ...workflow,
-        states: updatedStates,
-        updatedAt: new Date().toISOString(),
+        layout: {
+          ...workflow.layout,
+          states: updatedLayoutStates,
+          updatedAt: new Date().toISOString()
+        }
       };
 
       onWorkflowUpdate(updatedWorkflow);
@@ -197,24 +271,24 @@ export const WorkflowCanvas: React.FC<WorkflowCanvasProps> = ({
       >
         <Background />
         <Controls />
-        <MiniMap 
+        <MiniMap
           nodeColor={(node) => {
-            const state = node.data?.state as WorkflowState;
+            const state = node.data?.state as UIStateData;
             if (state?.isInitial) return '#10b981'; // green
             if (state?.isFinal) return '#ef4444'; // red
             return '#6b7280'; // gray
           }}
           className={darkMode ? 'dark' : ''}
         />
-        
+
         <Panel position="top-left" className="bg-white dark:bg-gray-800 p-3 rounded-lg shadow-lg border border-gray-200 dark:border-gray-700">
           <div className="text-sm">
             <h4 className="font-medium text-gray-900 dark:text-white mb-2">
-              {workflow.name}
+              {workflow.configuration.name}
             </h4>
             <div className="text-gray-600 dark:text-gray-400 space-y-1">
-              <div>{workflow.states.length} states</div>
-              <div>{workflow.transitions.length} transitions</div>
+              <div>{Object.keys(workflow.configuration.states).length} states</div>
+              <div>{uiTransitions.length} transitions</div>
               <div className="text-xs">
                 Updated: {new Date(workflow.updatedAt).toLocaleDateString()}
               </div>

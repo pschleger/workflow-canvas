@@ -73,299 +73,358 @@ const mockWorkflows: Record<string, WorkflowSummary[]> = {
   ]
 };
 
-// Segregated mock data - workflow configurations (functional specification)
-const mockWorkflowConfigurations: Record<string, WorkflowConfiguration> = {
+// Workflow metadata for API operations
+const mockWorkflowMetadata: Record<string, { id: string; entityId: string; createdAt: string; updatedAt: string }> = {
   'user-registration': {
     id: 'user-registration',
     entityId: 'user-entity',
-    name: 'User Registration',
-    description: 'New user account creation process',
-    version: 1,
     createdAt: '2024-01-10T08:00:00Z',
-    updatedAt: '2024-01-15T10:30:00Z',
-    states: [
-      {
-        id: 'pending',
-        name: 'Pending',
-        description: 'User has started registration',
-        isInitial: true
-      },
-      {
-        id: 'email-sent',
-        name: 'Email Sent',
-        description: 'Verification email has been sent'
-      },
-      {
-        id: 'verified',
-        name: 'Verified',
-        description: 'Email has been verified'
-      },
-      {
-        id: 'failed',
-        name: 'Failed',
-        description: 'Registration failed',
-        isFinal: true
-      }
-    ],
-    transitions: [
-      {
-        id: 'pending-to-email-sent',
-        sourceStateId: 'pending',
-        targetStateId: 'email-sent',
-        name: 'Send Verification Email',
-        conditions: [
-          { field: 'email', operator: 'contains', value: '@' }
-        ],
-        actions: [
-          { type: 'send_notification', parameters: { template: 'verification_email' } }
-        ]
-      },
-      {
-        id: 'email-sent-to-verified',
-        sourceStateId: 'email-sent',
-        targetStateId: 'verified',
-        name: 'Email Verified',
-        conditions: [
-          { field: 'verification_token', operator: 'equals', value: 'valid' }
-        ]
-      },
-      {
-        id: 'pending-to-failed',
-        sourceStateId: 'pending',
-        targetStateId: 'failed',
-        name: 'Invalid Email',
-        conditions: [
-          { field: 'email', operator: 'not_equals', value: '@' }
-        ]
-      },
-      {
-        id: 'email-sent-to-failed',
-        sourceStateId: 'email-sent',
-        targetStateId: 'failed',
-        name: 'Verification Timeout',
-        conditions: [
-          { field: 'timeout', operator: 'greater_than', value: 3600 }
-        ]
-      }
-    ]
+    updatedAt: '2024-01-15T10:30:00Z'
   },
   'user-verification': {
     id: 'user-verification',
     entityId: 'user-entity',
-    name: 'User Verification',
-    description: 'Email and identity verification process',
-    version: 1,
     createdAt: '2024-01-12T08:00:00Z',
-    updatedAt: '2024-01-14T15:45:00Z',
-    states: [
-      {
-        id: 'unverified',
-        name: 'Unverified',
-        description: 'User account created but not verified',
-        isInitial: true
-      },
-      {
-        id: 'verification-sent',
-        name: 'Verification Sent',
-        description: 'Verification email has been sent'
-      },
-      {
-        id: 'verified',
-        name: 'Verified',
-        description: 'User account is verified',
-        isFinal: true
-      }
-    ],
-    transitions: [
-      {
-        id: 'unverified-to-verification-sent',
-        sourceStateId: 'unverified',
-        targetStateId: 'verification-sent',
-        name: 'Send Verification',
-        conditions: [
-          { field: 'email_valid', operator: 'equals', value: true }
-        ],
-        actions: [
-          { type: 'send_notification', parameters: { template: 'verification_email' } }
-        ]
-      },
-      {
-        id: 'verification-sent-to-verified',
-        sourceStateId: 'verification-sent',
-        targetStateId: 'verified',
-        name: 'Verify Email',
-        conditions: [
-          { field: 'verification_code', operator: 'equals', value: 'valid' }
-        ],
-        actions: [
-          { type: 'set_field', parameters: { field: 'verified_at', value: 'now()' } }
-        ]
-      },
-      {
-        id: 'verification-sent-to-unverified',
-        sourceStateId: 'verification-sent',
-        targetStateId: 'unverified',
-        name: 'Resend Verification',
-        conditions: [
-          { field: 'resend_requested', operator: 'equals', value: true }
-        ]
-      }
-    ]
+    updatedAt: '2024-01-14T15:45:00Z'
   },
   'order-fulfillment': {
     id: 'order-fulfillment',
     entityId: 'order-entity',
-    name: 'Order Fulfillment',
-    description: 'Complete order processing workflow',
-    version: 1,
     createdAt: '2024-01-14T08:00:00Z',
-    updatedAt: '2024-01-16T09:15:00Z',
-    states: [
-      {
-        id: 'pending',
-        name: 'Pending',
-        description: 'Order received and pending processing',
-        isInitial: true
-      },
-      {
-        id: 'processing',
-        name: 'Processing',
-        description: 'Order is being processed'
-      },
-      {
-        id: 'shipped',
-        name: 'Shipped',
-        description: 'Order has been shipped'
-      },
-      {
-        id: 'delivered',
-        name: 'Delivered',
-        description: 'Order has been delivered',
-        isFinal: true
-      },
-      {
-        id: 'cancelled',
-        name: 'Cancelled',
-        description: 'Order was cancelled',
-        isFinal: true
-      }
-    ],
-    transitions: [
-      {
-        id: 'pending-to-processing',
-        sourceStateId: 'pending',
-        targetStateId: 'processing',
-        name: 'Start Processing',
-        conditions: [
-          { field: 'payment_confirmed', operator: 'equals', value: true }
-        ]
-      },
-      {
-        id: 'processing-to-shipped',
-        sourceStateId: 'processing',
-        targetStateId: 'shipped',
-        name: 'Ship Order',
-        conditions: [
-          { field: 'items_packed', operator: 'equals', value: true }
-        ]
-      },
-      {
-        id: 'shipped-to-delivered',
-        sourceStateId: 'shipped',
-        targetStateId: 'delivered',
-        name: 'Confirm Delivery',
-        conditions: [
-          { field: 'delivery_confirmed', operator: 'equals', value: true }
-        ]
-      },
-      {
-        id: 'pending-to-cancelled',
-        sourceStateId: 'pending',
-        targetStateId: 'cancelled',
-        name: 'Cancel Order',
-        conditions: [
-          { field: 'cancellation_requested', operator: 'equals', value: true }
-        ]
-      }
-    ]
+    updatedAt: '2024-01-16T09:15:00Z'
   },
   'payment-processing': {
     id: 'payment-processing',
     entityId: 'payment-entity',
-    name: 'Payment Processing',
-    description: 'Payment authorization and settlement',
-    version: 1,
     createdAt: '2024-01-11T08:00:00Z',
-    updatedAt: '2024-01-13T14:20:00Z',
-    states: [
-      {
-        id: 'initiated',
-        name: 'Initiated',
-        description: 'Payment has been initiated',
-        isInitial: true
+    updatedAt: '2024-01-13T14:20:00Z'
+  }
+};
+
+// Segregated mock data - workflow configurations (functional specification)
+const mockWorkflowConfigurations: Record<string, WorkflowConfiguration> = {
+  'user-registration': {
+    version: '1.0',
+    name: 'User Registration',
+    desc: 'New user account creation process',
+    initialState: 'pending',
+    active: true,
+    states: {
+      'pending': {
+        transitions: [
+          {
+            name: 'Send Verification Email',
+            next: 'email-sent',
+            criterion: {
+              type: 'simple',
+              field: 'email',
+              operator: 'contains',
+              value: '@'
+            },
+            processors: [
+              {
+                name: 'send-verification-email',
+                executionMode: 'ASYNC_NEW_TX',
+                config: {
+                  attachEntity: true,
+                  responseTimeoutMs: 5000,
+                  context: 'email-verification'
+                }
+              }
+            ]
+          },
+          {
+            name: 'Invalid Email',
+            next: 'failed',
+            criterion: {
+              type: 'simple',
+              field: 'email',
+              operator: 'not_contains',
+              value: '@'
+            }
+          }
+        ]
       },
-      {
-        id: 'authorized',
-        name: 'Authorized',
-        description: 'Payment has been authorized'
+      'email-sent': {
+        transitions: [
+          {
+            name: 'Email Verified',
+            next: 'verified',
+            criterion: {
+              type: 'simple',
+              field: 'verification_token',
+              operator: 'equals',
+              value: 'valid'
+            }
+          },
+          {
+            name: 'Verification Timeout',
+            next: 'failed',
+            criterion: {
+              type: 'simple',
+              field: 'timeout',
+              operator: 'greater_than',
+              value: 3600
+            }
+          }
+        ]
       },
-      {
-        id: 'captured',
-        name: 'Captured',
-        description: 'Payment has been captured',
-        isFinal: true
+      'verified': {
+        transitions: []
       },
-      {
-        id: 'failed',
-        name: 'Failed',
-        description: 'Payment failed',
-        isFinal: true
-      },
-      {
-        id: 'refunded',
-        name: 'Refunded',
-        description: 'Payment has been refunded',
-        isFinal: true
+      'failed': {
+        transitions: []
       }
-    ],
-    transitions: [
-      {
-        id: 'initiated-to-authorized',
-        sourceStateId: 'initiated',
-        targetStateId: 'authorized',
-        name: 'Authorize Payment',
-        conditions: [
-          { field: 'card_valid', operator: 'equals', value: true }
+    }
+  },
+  'user-verification': {
+    version: '1.0',
+    name: 'User Verification',
+    desc: 'Email and identity verification process',
+    initialState: 'unverified',
+    active: true,
+    states: {
+      'unverified': {
+        transitions: [
+          {
+            name: 'Send Verification',
+            next: 'verification-sent',
+            criterion: {
+              type: 'simple',
+              field: 'email_valid',
+              operator: 'equals',
+              value: true
+            },
+            processors: [
+              {
+                name: 'send-verification-email',
+                executionMode: 'ASYNC_NEW_TX',
+                config: {
+                  attachEntity: true,
+                  responseTimeoutMs: 5000
+                }
+              }
+            ]
+          }
         ]
       },
-      {
-        id: 'authorized-to-captured',
-        sourceStateId: 'authorized',
-        targetStateId: 'captured',
-        name: 'Capture Payment',
-        conditions: [
-          { field: 'capture_requested', operator: 'equals', value: true }
+      'verification-sent': {
+        transitions: [
+          {
+            name: 'Verify Email',
+            next: 'verified',
+            criterion: {
+              type: 'simple',
+              field: 'verification_code',
+              operator: 'equals',
+              value: 'valid'
+            },
+            processors: [
+              {
+                name: 'mark-verified',
+                executionMode: 'SYNC',
+                config: {
+                  attachEntity: true
+                }
+              }
+            ]
+          },
+          {
+            name: 'Resend Verification',
+            next: 'unverified',
+            criterion: {
+              type: 'simple',
+              field: 'resend_requested',
+              operator: 'equals',
+              value: true
+            }
+          }
         ]
       },
-      {
-        id: 'initiated-to-failed',
-        sourceStateId: 'initiated',
-        targetStateId: 'failed',
-        name: 'Payment Failed',
-        conditions: [
-          { field: 'authorization_failed', operator: 'equals', value: true }
-        ]
-      },
-      {
-        id: 'captured-to-refunded',
-        sourceStateId: 'captured',
-        targetStateId: 'refunded',
-        name: 'Refund Payment',
-        conditions: [
-          { field: 'refund_requested', operator: 'equals', value: true }
-        ]
+      'verified': {
+        transitions: []
       }
-    ]
+    }
+  },
+  'order-fulfillment': {
+    version: '1.0',
+    name: 'Order Fulfillment',
+    desc: 'Complete order processing workflow',
+    initialState: 'pending',
+    active: true,
+    states: {
+      'pending': {
+        transitions: [
+          {
+            name: 'Start Processing',
+            next: 'processing',
+            criterion: {
+              type: 'simple',
+              field: 'payment_confirmed',
+              operator: 'equals',
+              value: true
+            },
+            processors: [
+              {
+                name: 'inventory-check',
+                executionMode: 'SYNC',
+                config: {
+                  attachEntity: true,
+                  responseTimeoutMs: 3000
+                }
+              }
+            ]
+          },
+          {
+            name: 'Cancel Order',
+            next: 'cancelled',
+            manual: true
+          }
+        ]
+      },
+      'processing': {
+        transitions: [
+          {
+            name: 'Ship Order',
+            next: 'shipped',
+            criterion: {
+              type: 'simple',
+              field: 'items_packed',
+              operator: 'equals',
+              value: true
+            },
+            processors: [
+              {
+                name: 'shipping-label',
+                executionMode: 'ASYNC_NEW_TX',
+                config: {
+                  attachEntity: true,
+                  responseTimeoutMs: 10000
+                }
+              }
+            ]
+          }
+        ]
+      },
+      'shipped': {
+        transitions: [
+          {
+            name: 'Confirm Delivery',
+            next: 'delivered',
+            criterion: {
+              type: 'simple',
+              field: 'delivery_confirmed',
+              operator: 'equals',
+              value: true
+            }
+          }
+        ]
+      },
+      'delivered': {
+        transitions: []
+      },
+      'cancelled': {
+        transitions: []
+      }
+    }
+  },
+  'payment-processing': {
+    version: '1.0',
+    name: 'Payment Processing',
+    desc: 'Payment authorization and settlement',
+    initialState: 'initiated',
+    active: true,
+    states: {
+      'initiated': {
+        transitions: [
+          {
+            name: 'Authorize Payment',
+            next: 'authorized',
+            criterion: {
+              type: 'simple',
+              field: 'card_valid',
+              operator: 'equals',
+              value: true
+            },
+            processors: [
+              {
+                name: 'payment-gateway',
+                executionMode: 'SYNC',
+                config: {
+                  attachEntity: true,
+                  responseTimeoutMs: 5000,
+                  retryPolicy: 'exponential-backoff'
+                }
+              }
+            ]
+          },
+          {
+            name: 'Payment Failed',
+            next: 'failed',
+            criterion: {
+              type: 'simple',
+              field: 'authorization_failed',
+              operator: 'equals',
+              value: true
+            }
+          }
+        ]
+      },
+      'authorized': {
+        transitions: [
+          {
+            name: 'Capture Payment',
+            next: 'captured',
+            criterion: {
+              type: 'simple',
+              field: 'capture_requested',
+              operator: 'equals',
+              value: true
+            },
+            processors: [
+              {
+                name: 'payment-capture',
+                executionMode: 'SYNC',
+                config: {
+                  attachEntity: true,
+                  responseTimeoutMs: 5000
+                }
+              }
+            ]
+          }
+        ]
+      },
+      'captured': {
+        transitions: [
+          {
+            name: 'Refund Payment',
+            next: 'refunded',
+            criterion: {
+              type: 'simple',
+              field: 'refund_requested',
+              operator: 'equals',
+              value: true
+            },
+            processors: [
+              {
+                name: 'payment-refund',
+                executionMode: 'ASYNC_NEW_TX',
+                config: {
+                  attachEntity: true,
+                  responseTimeoutMs: 10000
+                }
+              }
+            ]
+          }
+        ]
+      },
+      'failed': {
+        transitions: []
+      },
+      'refunded': {
+        transitions: []
+      }
+    }
   }
 };
 
@@ -594,19 +653,21 @@ export class MockApiService {
   }
 
   // Update workflow configuration
-  static async updateWorkflowConfiguration(_entityId: string, configuration: WorkflowConfiguration): Promise<WorkflowConfigurationResponse> {
+  static async updateWorkflowConfiguration(entityId: string, workflowId: string, configuration: WorkflowConfiguration): Promise<WorkflowConfigurationResponse> {
     await delay(600);
 
     // Update the mock data
-    mockWorkflowConfigurations[configuration.id] = {
-      ...configuration,
-      updatedAt: new Date().toISOString()
-    };
+    mockWorkflowConfigurations[workflowId] = configuration;
+
+    // Update metadata
+    if (mockWorkflowMetadata[workflowId]) {
+      mockWorkflowMetadata[workflowId].updatedAt = new Date().toISOString();
+    }
 
     return {
-      data: mockWorkflowConfigurations[configuration.id],
+      data: mockWorkflowConfigurations[workflowId],
       success: true,
-      message: `Workflow configuration ${configuration.id} updated successfully`
+      message: `Workflow configuration ${workflowId} updated successfully`
     };
   }
 

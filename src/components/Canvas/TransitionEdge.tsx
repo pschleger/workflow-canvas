@@ -6,12 +6,12 @@ import {
 } from '@xyflow/react';
 import type { EdgeProps } from '@xyflow/react';
 import { Edit, Filter, Zap, Move, RotateCcw } from 'lucide-react';
-import type { WorkflowTransition } from '../../types/workflow';
+import type { UITransitionData } from '../../types/workflow';
 
 interface TransitionEdgeData {
-  transition: WorkflowTransition;
-  onEdit: (transition: WorkflowTransition) => void;
-  onUpdate: (transition: WorkflowTransition) => void;
+  transition: UITransitionData;
+  onEdit: (transitionId: string) => void;
+  onUpdate: (transition: UITransitionData) => void;
 }
 
 export const TransitionEdge: React.FC<EdgeProps> = ({
@@ -88,14 +88,14 @@ export const TransitionEdge: React.FC<EdgeProps> = ({
   const handleEdit = (e: React.MouseEvent) => {
     e.stopPropagation();
     if (transition && onEdit) {
-      onEdit(transition);
+      onEdit(transition.id);
     }
   };
 
   const handleDoubleClick = (e: React.MouseEvent) => {
     e.stopPropagation();
     if (transition && onEdit) {
-      onEdit(transition);
+      onEdit(transition.id);
     }
   };
 
@@ -139,6 +139,11 @@ export const TransitionEdge: React.FC<EdgeProps> = ({
 
       // Save the new label position to the transition
       if (transition && onUpdate) {
+        console.log('TransitionEdge: Updating transition position', {
+          transitionId: transition.id,
+          finalOffset,
+          transition
+        });
         const updatedTransition = {
           ...transition,
           labelPosition: finalOffset,
@@ -171,8 +176,8 @@ export const TransitionEdge: React.FC<EdgeProps> = ({
     return <BaseEdge id={id as string} path={edgePath} />;
   }
 
-  const hasConditions = transition.conditions && transition.conditions.length > 0;
-  const hasActions = transition.actions && transition.actions.length > 0;
+  const hasCriterion = transition.definition.criterion !== undefined;
+  const hasProcessors = transition.definition.processors && transition.definition.processors.length > 0;
 
   return (
     <>
@@ -217,26 +222,38 @@ export const TransitionEdge: React.FC<EdgeProps> = ({
               {/* Transition Name */}
               <div className="flex-1 min-w-0">
                 <div className="font-medium text-gray-900 dark:text-white truncate">
-                  {transition.name || 'Unnamed Transition'}
+                  {transition.definition.name || 'Unnamed Transition'}
                 </div>
-                
+
                 {/* Indicators */}
                 <div className="flex items-center space-x-2 mt-1">
-                  {hasConditions && (
+                  {hasCriterion && (
                     <div className="flex items-center space-x-1 text-xs text-blue-600 dark:text-blue-400">
                       <Filter size={12} />
-                      <span>{transition.conditions!.length}</span>
+                      <span>Criterion</span>
                     </div>
                   )}
-                  
-                  {hasActions && (
+
+                  {hasProcessors && (
                     <div className="flex items-center space-x-1 text-xs text-green-600 dark:text-green-400">
                       <Zap size={12} />
-                      <span>{transition.actions!.length}</span>
+                      <span>{transition.definition.processors!.length}</span>
                     </div>
                   )}
                 </div>
               </div>
+
+              {/* Reset Button (only show if label is moved) */}
+              {shouldUseBentPath && (
+                <button
+                  onClick={handleReset}
+                  onMouseDown={(e) => e.stopPropagation()}
+                  className="flex-shrink-0 p-1 text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 transition-colors"
+                  title="Reset label position"
+                >
+                  <RotateCcw size={12} />
+                </button>
+              )}
 
               {/* Edit Button */}
               <button
@@ -249,14 +266,11 @@ export const TransitionEdge: React.FC<EdgeProps> = ({
               </button>
             </div>
 
-            {/* Condition Preview */}
-            {hasConditions && transition.conditions!.length > 0 && (
+            {/* Criterion Preview */}
+            {hasCriterion && (
               <div className="mt-2 text-xs text-gray-600 dark:text-gray-400">
                 <div className="truncate">
-                  {transition.conditions![0].field} {transition.conditions![0].operator} {String(transition.conditions![0].value)}
-                  {transition.conditions!.length > 1 && (
-                    <span className="ml-1">+{transition.conditions!.length - 1} more</span>
-                  )}
+                  Criterion: {transition.definition.criterion!.type}
                 </div>
               </div>
             )}
