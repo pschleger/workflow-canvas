@@ -5,12 +5,37 @@ import { WorkflowCanvas } from './components/Canvas/WorkflowCanvas';
 import { StateEditor } from './components/Editors/StateEditor';
 import { TransitionEditor } from './components/Editors/TransitionEditor';
 import { MockApiService } from './services/mockApi';
-import type { Workflow, WorkflowState, WorkflowTransition } from './types/workflow';
+import type { WorkflowConfiguration, CanvasLayout, WorkflowState, WorkflowTransition } from './types/workflow';
+
+// Helper function to combine configuration and layout into a legacy Workflow format for UI compatibility
+function combineWorkflowData(config: WorkflowConfiguration, layout: CanvasLayout) {
+  const stateLayoutMap = new Map(layout.states.map(s => [s.id, s]));
+  const transitionLayoutMap = new Map(layout.transitions.map(t => [t.id, t]));
+
+  return {
+    ...config,
+    states: config.states.map(state => {
+      const layoutInfo = stateLayoutMap.get(state.id);
+      return {
+        ...state,
+        position: layoutInfo?.position || { x: 0, y: 0 },
+        properties: layoutInfo?.properties
+      };
+    }),
+    transitions: config.transitions.map(transition => {
+      const layoutInfo = transitionLayoutMap.get(transition.id);
+      return {
+        ...transition,
+        labelPosition: layoutInfo?.labelPosition
+      };
+    })
+  };
+}
 
 function App() {
   const [selectedEntityId, setSelectedEntityId] = useState<string | null>(null);
   const [selectedWorkflowId, setSelectedWorkflowId] = useState<string | null>(null);
-  const [currentWorkflow, setCurrentWorkflow] = useState<Workflow | null>(null);
+  const [currentWorkflow, setCurrentWorkflow] = useState<any | null>(null); // Combined workflow data for UI
   const [darkMode, setDarkMode] = useState(() => {
     // Load dark mode preference from localStorage
     const saved = localStorage.getItem('darkMode');
@@ -33,25 +58,79 @@ function App() {
     setLoading(true);
 
     try {
-      const response = await MockApiService.getWorkflow(entityId, workflowId);
-      if (response.success) {
-        setCurrentWorkflow(response.data);
+      // Get both configuration and layout using the new segregated API
+      const [configResponse, layoutResponse] = await Promise.all([
+        MockApiService.getWorkflowConfiguration(entityId, workflowId),
+        MockApiService.getCanvasLayout(entityId, workflowId)
+      ]);
+
+      if (configResponse.success && layoutResponse.success) {
+        // Combine the segregated data for UI compatibility
+        const combinedWorkflow = combineWorkflowData(configResponse.data, layoutResponse.data);
+        setCurrentWorkflow(combinedWorkflow);
       } else {
-        console.error('Failed to load workflow:', response.message);
+        console.error('Failed to load workflow:', configResponse.message || layoutResponse.message);
+        setCurrentWorkflow(null);
       }
     } catch (error) {
       console.error('Error loading workflow:', error);
+      setCurrentWorkflow(null);
     } finally {
       setLoading(false);
     }
   }, []);
 
-  const handleWorkflowUpdate = useCallback(async (workflow: Workflow) => {
+  const handleWorkflowUpdate = useCallback(async (workflow: any) => {
     setCurrentWorkflow(workflow);
 
-    // Save to backend
+    // Split the combined workflow back into configuration and layout for saving
     try {
-      await MockApiService.updateWorkflow(workflow.entityId, workflow);
+      const configuration: WorkflowConfiguration = {
+        id: workflow.id,
+        entityId: workflow.entityId,
+        name: workflow.name,
+        description: workflow.description,
+        version: workflow.version,
+        createdAt: workflow.createdAt,
+        updatedAt: workflow.updatedAt,
+        states: workflow.states.map((state: any) => ({
+          id: state.id,
+          name: state.name,
+          description: state.description,
+          isInitial: state.isInitial,
+          isFinal: state.isFinal
+        })),
+        transitions: workflow.transitions.map((transition: any) => ({
+          id: transition.id,
+          name: transition.name,
+          sourceStateId: transition.sourceStateId,
+          targetStateId: transition.targetStateId,
+          conditions: transition.conditions,
+          actions: transition.actions,
+          description: transition.description
+        }))
+      };
+
+      const layout: CanvasLayout = {
+        workflowId: workflow.id,
+        version: workflow.version,
+        updatedAt: workflow.updatedAt,
+        states: workflow.states.map((state: any) => ({
+          id: state.id,
+          position: state.position,
+          properties: state.properties
+        })),
+        transitions: workflow.transitions.map((transition: any) => ({
+          id: transition.id,
+          labelPosition: transition.labelPosition
+        }))
+      };
+
+      // Save both configuration and layout
+      await Promise.all([
+        MockApiService.updateWorkflowConfiguration(workflow.entityId, configuration),
+        MockApiService.updateCanvasLayout(workflow.entityId, layout)
+      ]);
     } catch (error) {
       console.error('Error saving workflow:', error);
     }
@@ -157,8 +236,8 @@ function App() {
               setSelectedEntityId(workflowData.entityId);
               setSelectedWorkflowId(workflowData.id);
 
-              // Save to mock backend
-              MockApiService.updateWorkflow(workflowData.entityId, workflowData);
+              // Save to mock backend using the new segregated structure
+              handleWorkflowUpdate(workflowData);
 
               alert('Workflow imported successfully!');
             } else {

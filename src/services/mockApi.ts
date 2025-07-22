@@ -1,10 +1,13 @@
 import type {
   Entity,
-  Workflow,
+  WorkflowConfiguration,
+  CanvasLayout,
   WorkflowSummary,
   EntitiesResponse,
-  WorkflowResponse,
-  WorkflowsResponse
+  WorkflowsResponse,
+  WorkflowConfigurationResponse,
+  CanvasLayoutResponse,
+  WorkflowWithLayoutResponse
 } from '../types/workflow';
 
 // Mock data
@@ -70,7 +73,8 @@ const mockWorkflows: Record<string, WorkflowSummary[]> = {
   ]
 };
 
-const mockWorkflowDetails: Record<string, Workflow> = {
+// Segregated mock data - workflow configurations (functional specification)
+const mockWorkflowConfigurations: Record<string, WorkflowConfiguration> = {
   'user-registration': {
     id: 'user-registration',
     entityId: 'user-entity',
@@ -84,31 +88,23 @@ const mockWorkflowDetails: Record<string, Workflow> = {
         id: 'pending',
         name: 'Pending',
         description: 'User has started registration',
-        position: { x: 100, y: 100 },
-        isInitial: true,
-        properties: { color: '#fbbf24' }
+        isInitial: true
       },
       {
         id: 'email-sent',
         name: 'Email Sent',
-        description: 'Verification email has been sent',
-        position: { x: 300, y: 100 },
-        properties: { color: '#60a5fa' }
+        description: 'Verification email has been sent'
       },
       {
         id: 'verified',
         name: 'Verified',
-        description: 'Email has been verified',
-        position: { x: 500, y: 100 },
-        properties: { color: '#34d399' }
+        description: 'Email has been verified'
       },
       {
         id: 'failed',
         name: 'Failed',
         description: 'Registration failed',
-        position: { x: 300, y: 250 },
-        isFinal: true,
-        properties: { color: '#f87171' }
+        isFinal: true
       }
     ],
     transitions: [
@@ -166,24 +162,18 @@ const mockWorkflowDetails: Record<string, Workflow> = {
         id: 'unverified',
         name: 'Unverified',
         description: 'User account created but not verified',
-        position: { x: 100, y: 100 },
-        isInitial: true,
-        properties: { color: '#f59e0b' }
+        isInitial: true
       },
       {
         id: 'verification-sent',
         name: 'Verification Sent',
-        description: 'Verification email has been sent',
-        position: { x: 350, y: 100 },
-        properties: { color: '#3b82f6' }
+        description: 'Verification email has been sent'
       },
       {
         id: 'verified',
         name: 'Verified',
         description: 'User account is verified',
-        position: { x: 600, y: 100 },
-        isFinal: true,
-        properties: { color: '#10b981' }
+        isFinal: true
       }
     ],
     transitions: [
@@ -235,39 +225,29 @@ const mockWorkflowDetails: Record<string, Workflow> = {
         id: 'pending',
         name: 'Pending',
         description: 'Order received and pending processing',
-        position: { x: 100, y: 100 },
-        isInitial: true,
-        properties: { color: '#f59e0b' }
+        isInitial: true
       },
       {
         id: 'processing',
         name: 'Processing',
-        description: 'Order is being processed',
-        position: { x: 300, y: 100 },
-        properties: { color: '#3b82f6' }
+        description: 'Order is being processed'
       },
       {
         id: 'shipped',
         name: 'Shipped',
-        description: 'Order has been shipped',
-        position: { x: 500, y: 100 },
-        properties: { color: '#8b5cf6' }
+        description: 'Order has been shipped'
       },
       {
         id: 'delivered',
         name: 'Delivered',
         description: 'Order has been delivered',
-        position: { x: 700, y: 100 },
-        isFinal: true,
-        properties: { color: '#10b981' }
+        isFinal: true
       },
       {
         id: 'cancelled',
         name: 'Cancelled',
         description: 'Order was cancelled',
-        position: { x: 300, y: 250 },
-        isFinal: true,
-        properties: { color: '#ef4444' }
+        isFinal: true
       }
     ],
     transitions: [
@@ -322,40 +302,30 @@ const mockWorkflowDetails: Record<string, Workflow> = {
         id: 'initiated',
         name: 'Initiated',
         description: 'Payment has been initiated',
-        position: { x: 100, y: 100 },
-        isInitial: true,
-        properties: { color: '#f59e0b' }
+        isInitial: true
       },
       {
         id: 'authorized',
         name: 'Authorized',
-        description: 'Payment has been authorized',
-        position: { x: 300, y: 100 },
-        properties: { color: '#3b82f6' }
+        description: 'Payment has been authorized'
       },
       {
         id: 'captured',
         name: 'Captured',
         description: 'Payment has been captured',
-        position: { x: 500, y: 100 },
-        isFinal: true,
-        properties: { color: '#10b981' }
+        isFinal: true
       },
       {
         id: 'failed',
         name: 'Failed',
         description: 'Payment failed',
-        position: { x: 300, y: 250 },
-        isFinal: true,
-        properties: { color: '#ef4444' }
+        isFinal: true
       },
       {
         id: 'refunded',
         name: 'Refunded',
         description: 'Payment has been refunded',
-        position: { x: 500, y: 250 },
-        isFinal: true,
-        properties: { color: '#6b7280' }
+        isFinal: true
       }
     ],
     transitions: [
@@ -399,6 +369,146 @@ const mockWorkflowDetails: Record<string, Workflow> = {
   }
 };
 
+// Canvas layouts (visual/positional data)
+const mockCanvasLayouts: Record<string, CanvasLayout> = {
+  'user-registration': {
+    workflowId: 'user-registration',
+    version: 1,
+    updatedAt: '2024-01-15T10:30:00Z',
+    states: [
+      {
+        id: 'pending',
+        position: { x: 100, y: 100 },
+        properties: { color: '#fbbf24' }
+      },
+      {
+        id: 'email-sent',
+        position: { x: 300, y: 100 },
+        properties: { color: '#60a5fa' }
+      },
+      {
+        id: 'verified',
+        position: { x: 500, y: 100 },
+        properties: { color: '#34d399' }
+      },
+      {
+        id: 'failed',
+        position: { x: 300, y: 250 },
+        properties: { color: '#f87171' }
+      }
+    ],
+    transitions: [
+      { id: 'pending-to-email-sent' },
+      { id: 'email-sent-to-verified' },
+      { id: 'pending-to-failed' },
+      { id: 'email-sent-to-failed' }
+    ]
+  },
+  'user-verification': {
+    workflowId: 'user-verification',
+    version: 1,
+    updatedAt: '2024-01-14T15:45:00Z',
+    states: [
+      {
+        id: 'unverified',
+        position: { x: 100, y: 100 },
+        properties: { color: '#f59e0b' }
+      },
+      {
+        id: 'verification-sent',
+        position: { x: 350, y: 100 },
+        properties: { color: '#3b82f6' }
+      },
+      {
+        id: 'verified',
+        position: { x: 600, y: 100 },
+        properties: { color: '#10b981' }
+      }
+    ],
+    transitions: [
+      { id: 'unverified-to-verification-sent' },
+      { id: 'verification-sent-to-verified' },
+      { id: 'verification-sent-to-unverified' }
+    ]
+  },
+  'order-fulfillment': {
+    workflowId: 'order-fulfillment',
+    version: 1,
+    updatedAt: '2024-01-16T09:15:00Z',
+    states: [
+      {
+        id: 'pending',
+        position: { x: 100, y: 100 },
+        properties: { color: '#f59e0b' }
+      },
+      {
+        id: 'processing',
+        position: { x: 300, y: 100 },
+        properties: { color: '#3b82f6' }
+      },
+      {
+        id: 'shipped',
+        position: { x: 500, y: 100 },
+        properties: { color: '#8b5cf6' }
+      },
+      {
+        id: 'delivered',
+        position: { x: 700, y: 100 },
+        properties: { color: '#10b981' }
+      },
+      {
+        id: 'cancelled',
+        position: { x: 300, y: 250 },
+        properties: { color: '#ef4444' }
+      }
+    ],
+    transitions: [
+      { id: 'pending-to-processing' },
+      { id: 'processing-to-shipped' },
+      { id: 'shipped-to-delivered' },
+      { id: 'pending-to-cancelled' }
+    ]
+  },
+  'payment-processing': {
+    workflowId: 'payment-processing',
+    version: 1,
+    updatedAt: '2024-01-13T14:20:00Z',
+    states: [
+      {
+        id: 'initiated',
+        position: { x: 100, y: 100 },
+        properties: { color: '#f59e0b' }
+      },
+      {
+        id: 'authorized',
+        position: { x: 300, y: 100 },
+        properties: { color: '#3b82f6' }
+      },
+      {
+        id: 'captured',
+        position: { x: 500, y: 100 },
+        properties: { color: '#10b981' }
+      },
+      {
+        id: 'failed',
+        position: { x: 300, y: 250 },
+        properties: { color: '#ef4444' }
+      },
+      {
+        id: 'refunded',
+        position: { x: 500, y: 250 },
+        properties: { color: '#6b7280' }
+      }
+    ],
+    transitions: [
+      { id: 'initiated-to-authorized' },
+      { id: 'authorized-to-captured' },
+      { id: 'initiated-to-failed' },
+      { id: 'captured-to-refunded' }
+    ]
+  }
+};
+
 // Simulate API delay
 const delay = (ms: number) => new Promise(resolve => setTimeout(resolve, ms));
 
@@ -422,38 +532,98 @@ export class MockApiService {
     };
   }
 
-  static async getWorkflow(_entityId: string, workflowId: string): Promise<WorkflowResponse> {
+  // Get workflow configuration (functional specification)
+  static async getWorkflowConfiguration(_entityId: string, workflowId: string): Promise<WorkflowConfigurationResponse> {
     await delay(400);
-    const workflow = mockWorkflowDetails[workflowId];
-    
-    if (!workflow) {
+    const configuration = mockWorkflowConfigurations[workflowId];
+
+    if (!configuration) {
       return {
-        data: {} as Workflow,
+        data: {} as WorkflowConfiguration,
+        success: false,
+        message: `Workflow configuration ${workflowId} not found`
+      };
+    }
+
+    return {
+      data: configuration,
+      success: true,
+      message: `Workflow configuration ${workflowId} retrieved successfully`
+    };
+  }
+
+  // Get canvas layout (visual/positional data)
+  static async getCanvasLayout(_entityId: string, workflowId: string): Promise<CanvasLayoutResponse> {
+    await delay(300);
+    const layout = mockCanvasLayouts[workflowId];
+
+    if (!layout) {
+      return {
+        data: {} as CanvasLayout,
+        success: false,
+        message: `Canvas layout ${workflowId} not found`
+      };
+    }
+
+    return {
+      data: layout,
+      success: true,
+      message: `Canvas layout ${workflowId} retrieved successfully`
+    };
+  }
+
+  // Get both workflow configuration and canvas layout together
+  static async getWorkflowWithLayout(_entityId: string, workflowId: string): Promise<WorkflowWithLayoutResponse> {
+    await delay(500);
+    const configuration = mockWorkflowConfigurations[workflowId];
+    const layout = mockCanvasLayouts[workflowId];
+
+    if (!configuration || !layout) {
+      return {
+        data: { configuration: {} as WorkflowConfiguration, layout: {} as CanvasLayout },
         success: false,
         message: `Workflow ${workflowId} not found`
       };
     }
 
     return {
-      data: workflow,
+      data: { configuration, layout },
       success: true,
       message: `Workflow ${workflowId} retrieved successfully`
     };
   }
 
-  static async updateWorkflow(_entityId: string, workflow: Workflow): Promise<WorkflowResponse> {
+  // Update workflow configuration
+  static async updateWorkflowConfiguration(_entityId: string, configuration: WorkflowConfiguration): Promise<WorkflowConfigurationResponse> {
     await delay(600);
-    
+
     // Update the mock data
-    mockWorkflowDetails[workflow.id] = {
-      ...workflow,
+    mockWorkflowConfigurations[configuration.id] = {
+      ...configuration,
       updatedAt: new Date().toISOString()
     };
 
     return {
-      data: mockWorkflowDetails[workflow.id],
+      data: mockWorkflowConfigurations[configuration.id],
       success: true,
-      message: `Workflow ${workflow.id} updated successfully`
+      message: `Workflow configuration ${configuration.id} updated successfully`
+    };
+  }
+
+  // Update canvas layout
+  static async updateCanvasLayout(_entityId: string, layout: CanvasLayout): Promise<CanvasLayoutResponse> {
+    await delay(400);
+
+    // Update the mock data
+    mockCanvasLayouts[layout.workflowId] = {
+      ...layout,
+      updatedAt: new Date().toISOString()
+    };
+
+    return {
+      data: mockCanvasLayouts[layout.workflowId],
+      success: true,
+      message: `Canvas layout ${layout.workflowId} updated successfully`
     };
   }
 }

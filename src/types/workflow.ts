@@ -7,17 +7,23 @@ export interface Entity {
   workflowCount: number;
 }
 
+// Functional workflow state (no visual/positional data)
 export interface WorkflowState {
   id: string;
   name: string;
   description?: string;
-  properties?: Record<string, any>;
+  isInitial?: boolean;
+  isFinal?: boolean;
+}
+
+// Visual/positional data for canvas layout
+export interface StateLayout {
+  id: string;
   position: {
     x: number;
     y: number;
   };
-  isInitial?: boolean;
-  isFinal?: boolean;
+  properties?: Record<string, any>; // colors, styling, etc.
 }
 
 export interface TransitionCondition {
@@ -31,6 +37,7 @@ export interface TransitionAction {
   parameters: Record<string, any>;
 }
 
+// Functional transition (no visual/positional data)
 export interface WorkflowTransition {
   id: string;
   name?: string;
@@ -39,13 +46,19 @@ export interface WorkflowTransition {
   conditions?: TransitionCondition[];
   actions?: TransitionAction[];
   description?: string;
+}
+
+// Visual/positional data for transition layout
+export interface TransitionLayout {
+  id: string;
   labelPosition?: {
     x: number;
     y: number;
   };
 }
 
-export interface Workflow {
+// Workflow configuration (functional specification only)
+export interface WorkflowConfiguration {
   id: string;
   entityId: string;
   name: string;
@@ -54,6 +67,15 @@ export interface Workflow {
   transitions: WorkflowTransition[];
   version: number;
   createdAt: string;
+  updatedAt: string;
+}
+
+// Canvas layout information (visual/positional data only)
+export interface CanvasLayout {
+  workflowId: string;
+  states: StateLayout[];
+  transitions: TransitionLayout[];
+  version: number;
   updatedAt: string;
 }
 
@@ -74,8 +96,15 @@ export interface ApiResponse<T> {
 }
 
 export interface EntitiesResponse extends ApiResponse<Entity[]> {}
-export interface WorkflowResponse extends ApiResponse<Workflow> {}
 export interface WorkflowsResponse extends ApiResponse<WorkflowSummary[]> {}
+
+// API response types for segregated structure
+export interface WorkflowConfigurationResponse extends ApiResponse<WorkflowConfiguration> {}
+export interface CanvasLayoutResponse extends ApiResponse<CanvasLayout> {}
+export interface WorkflowWithLayoutResponse extends ApiResponse<{
+  configuration: WorkflowConfiguration;
+  layout: CanvasLayout;
+}> {}
 
 // UI State types
 export interface AppState {
@@ -89,22 +118,29 @@ export interface AppState {
   darkMode: boolean;
 }
 
-// React Flow specific types
-export interface FlowNode extends WorkflowState {
+// React Flow specific types - combines state config with layout for rendering
+export interface FlowNode {
+  id: string;
   type: 'stateNode';
+  position: { x: number; y: number };
   data: {
     label: string;
     state: WorkflowState;
+    layout: StateLayout;
     onEdit: (state: WorkflowState) => void;
   };
 }
 
-export interface FlowEdge extends WorkflowTransition {
+export interface FlowEdge {
+  id: string;
   type: 'transitionEdge';
   source: string;
   target: string;
   data: {
     transition: WorkflowTransition;
+    layout: TransitionLayout;
     onEdit: (transition: WorkflowTransition) => void;
   };
 }
+
+

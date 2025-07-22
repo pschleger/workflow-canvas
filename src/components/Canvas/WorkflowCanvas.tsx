@@ -12,13 +12,26 @@ import {
 import type { Node, Edge, Connection } from '@xyflow/react';
 import '@xyflow/react/dist/style.css';
 
-import type { Workflow, WorkflowState, WorkflowTransition } from '../../types/workflow';
+import type { WorkflowState, WorkflowTransition } from '../../types/workflow';
+
+// Combined workflow type for UI compatibility (includes both config and layout data)
+interface CombinedWorkflow {
+  id: string;
+  entityId: string;
+  name: string;
+  description?: string;
+  states: (WorkflowState & { position: { x: number; y: number }; properties?: Record<string, any> })[];
+  transitions: (WorkflowTransition & { labelPosition?: { x: number; y: number } })[];
+  version: number;
+  createdAt: string;
+  updatedAt: string;
+}
 import { StateNode } from './StateNode';
 import { TransitionEdge } from './TransitionEdge';
 
 interface WorkflowCanvasProps {
-  workflow: Workflow | null;
-  onWorkflowUpdate: (workflow: Workflow) => void;
+  workflow: CombinedWorkflow | null;
+  onWorkflowUpdate: (workflow: CombinedWorkflow) => void;
   onStateEdit: (state: WorkflowState) => void;
   onTransitionEdit: (transition: WorkflowTransition) => void;
   darkMode: boolean;
