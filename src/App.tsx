@@ -349,12 +349,13 @@ function App() {
   }, []);
 
   const handleExport = useCallback(() => {
-    // TODO: Implement export functionality
     if (currentWorkflow) {
       const dataStr = JSON.stringify(currentWorkflow, null, 2);
       const dataUri = 'data:application/json;charset=utf-8,'+ encodeURIComponent(dataStr);
 
-      const exportFileDefaultName = `${currentWorkflow.name.replace(/\s+/g, '-').toLowerCase()}.json`;
+      // Fix: Use configuration.name instead of name (which doesn't exist on UIWorkflowData)
+      const workflowName = currentWorkflow.configuration.name || currentWorkflow.id || 'workflow';
+      const exportFileDefaultName = `${workflowName.replace(/\s+/g, '-').toLowerCase()}.json`;
 
       const linkElement = document.createElement('a');
       linkElement.setAttribute('href', dataUri);
