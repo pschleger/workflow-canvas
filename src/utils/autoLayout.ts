@@ -23,9 +23,9 @@ export interface LayoutResult {
 const DEFAULT_OPTIONS: Required<LayoutOptions> = {
   nodeWidth: 200,
   nodeHeight: 80,
-  rankSeparation: 100,
-  nodeSeparation: 50,
-  edgeSeparation: 20,
+  rankSeparation: 120, // Increased vertical spacing between levels
+  nodeSeparation: 80,  // Increased horizontal spacing between nodes at same level
+  edgeSeparation: 30,  // Increased spacing between parallel edges
   direction: 'TB', // Top to Bottom
 };
 
@@ -66,13 +66,15 @@ export function calculateAutoLayout(
   });
   
   // Add edges (transitions) to the graph
-  const transitions = workflow.configuration.transitions || [];
-  transitions.forEach(transition => {
-    // Ensure both source and target states exist
-    if (workflow.configuration.states[transition.from] && 
-        workflow.configuration.states[transition.to]) {
-      graph.setEdge(transition.from, transition.to);
-    }
+  // Transitions are stored within each state's definition, not as a separate array
+  Object.entries(workflow.configuration.states).forEach(([stateId, stateDefinition]) => {
+    stateDefinition.transitions.forEach(transition => {
+      // Ensure both source and target states exist
+      if (workflow.configuration.states[stateId] &&
+          workflow.configuration.states[transition.next]) {
+        graph.setEdge(stateId, transition.next);
+      }
+    });
   });
   
   // Run the layout algorithm

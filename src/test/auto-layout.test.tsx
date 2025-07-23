@@ -199,6 +199,98 @@ describe('Auto-Layout Functionality', () => {
       
       expect(canAutoLayout(incompleteWorkflow)).toBe(false)
     })
+
+    it('should handle branching workflows correctly', () => {
+      // Create a workflow with branching structure
+      const branchingWorkflow: UIWorkflowData = {
+        id: 'branching-test',
+        entityId: 'test-entity',
+        configuration: {
+          version: '1.0',
+          name: 'Branching Test Workflow',
+          initialState: 'start',
+          states: {
+            'start': {
+              transitions: [
+                { name: 'Go to A', next: 'stateA' },
+                { name: 'Go to B', next: 'stateB' }
+              ]
+            },
+            'stateA': {
+              transitions: [
+                { name: 'Go to End', next: 'end' }
+              ]
+            },
+            'stateB': {
+              transitions: [
+                { name: 'Go to End', next: 'end' }
+              ]
+            },
+            'end': {
+              transitions: []
+            }
+          }
+        },
+        layout: {
+          workflowId: 'branching-test',
+          version: 1,
+          updatedAt: new Date().toISOString(),
+          states: [
+            { id: 'start', position: { x: 0, y: 0 } },
+            { id: 'stateA', position: { x: 0, y: 0 } },
+            { id: 'stateB', position: { x: 0, y: 0 } },
+            { id: 'end', position: { x: 0, y: 0 } }
+          ],
+          transitions: []
+        },
+        createdAt: new Date().toISOString(),
+        updatedAt: new Date().toISOString()
+      }
+
+      const result = calculateAutoLayout(branchingWorkflow)
+
+      expect(result.states).toHaveLength(4)
+
+      // Find positions for each state
+      const startPos = result.states.find(s => s.id === 'start')?.position
+      const stateAPos = result.states.find(s => s.id === 'stateA')?.position
+      const stateBPos = result.states.find(s => s.id === 'stateB')?.position
+      const endPos = result.states.find(s => s.id === 'end')?.position
+
+      expect(startPos).toBeDefined()
+      expect(stateAPos).toBeDefined()
+      expect(stateBPos).toBeDefined()
+      expect(endPos).toBeDefined()
+
+      // In a proper branching layout, stateA and stateB should have different X positions
+      // (they should be side by side, not in a straight line)
+      if (stateAPos && stateBPos) {
+        expect(Math.abs(stateAPos.x - stateBPos.x)).toBeGreaterThan(0)
+      }
+
+      // Verify improved spacing - states should have adequate separation
+      const positions = result.states.map(s => s.position)
+      for (let i = 0; i < positions.length; i++) {
+        for (let j = i + 1; j < positions.length; j++) {
+          const distance = Math.sqrt(
+            Math.pow(positions[i].x - positions[j].x, 2) +
+            Math.pow(positions[i].y - positions[j].y, 2)
+          )
+          expect(distance).toBeGreaterThan(80) // Improved minimum separation
+        }
+      }
+
+      // Verify hierarchical structure - start should be at top, end at bottom
+      if (startPos && endPos) {
+        expect(startPos.y).toBeLessThan(endPos.y)
+      }
+
+      // Verify branching - stateA and stateB should be at same Y level but different X
+      if (stateAPos && stateBPos) {
+        expect(stateAPos.y).toEqual(stateBPos.y) // Same level
+        expect(Math.abs(stateAPos.x - stateBPos.x)).toBeGreaterThan(200) // Good horizontal separation
+      }
+    })
   })
 
   describe('Canvas Integration', () => {
