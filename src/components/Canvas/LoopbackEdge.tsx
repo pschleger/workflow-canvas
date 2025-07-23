@@ -227,24 +227,29 @@ export const LoopbackEdge: React.FC<EdgeProps> = ({
 
   // Define colors and thickness based on manual/automated state
   const getLoopbackStyles = () => {
+    const baseStrokeWidth = 1;
+    const automatedStrokeWidth = baseStrokeWidth * 2; // 2x thicker for automated
+
     if (selected) {
       return {
-        className: 'stroke-purple-500',
-        style: { strokeWidth: 2 }
+        className: isManual
+          ? 'stroke-gray-600 dark:stroke-gray-400'
+          : 'stroke-green-500 dark:stroke-green-400',
+        style: { strokeWidth: isManual ? baseStrokeWidth : automatedStrokeWidth }
       };
     }
 
     if (isManual) {
-      // Manual transitions: thinner, different color (green)
+      // Manual transitions: thin, dark grey
       return {
-        className: 'stroke-green-500 dark:stroke-green-400 hover:stroke-green-600',
-        style: { strokeWidth: 1.5 }
+        className: 'stroke-gray-600 dark:stroke-gray-400',
+        style: { strokeWidth: baseStrokeWidth }
       };
     } else {
-      // Automated transitions: thicker, different color (amber)
+      // Automated transitions: thick, green
       return {
-        className: 'stroke-amber-500 dark:stroke-amber-400 hover:stroke-amber-600',
-        style: { strokeWidth: 3 }
+        className: 'stroke-green-500 dark:stroke-green-400',
+        style: { strokeWidth: automatedStrokeWidth }
       };
     }
   };
@@ -276,10 +281,18 @@ export const LoopbackEdge: React.FC<EdgeProps> = ({
           onDoubleClick={handleDoubleClick}
         >
           <div
-            className={`bg-purple-50 dark:bg-purple-900/20 border rounded-full shadow-md px-3 py-1.5 text-sm transition-all duration-200 ${
+            className={`${
+              isManual
+                ? 'bg-purple-50 dark:bg-purple-900/20' // Manual: keep purple for loopbacks
+                : 'bg-green-50 dark:bg-green-900/20' // Automated: green
+            } border rounded-full shadow-md px-3 py-1.5 text-sm transition-all duration-200 ${
               selected
-                ? 'border-purple-500 ring-2 ring-purple-500 ring-opacity-20 bg-purple-100 dark:bg-purple-800/30'
-                : 'border-purple-200 dark:border-purple-700 hover:border-purple-400 hover:bg-purple-100 dark:hover:bg-purple-800/30'
+                ? isManual
+                  ? 'border-purple-500 ring-2 ring-purple-500 ring-opacity-20 bg-purple-100 dark:bg-purple-800/30'
+                  : 'border-green-500 ring-2 ring-green-500 ring-opacity-20 bg-green-100 dark:bg-green-800/30'
+                : isManual
+                  ? 'border-purple-200 dark:border-purple-700 hover:border-purple-400 hover:bg-purple-100 dark:hover:bg-purple-800/30'
+                  : 'border-green-200 dark:border-green-700 hover:border-green-400 hover:bg-green-100 dark:hover:bg-green-800/30'
             } ${isDragging ? 'shadow-xl scale-105' : ''}`}
           >
             <div className="flex items-center space-x-2">
@@ -336,16 +349,16 @@ export const LoopbackEdge: React.FC<EdgeProps> = ({
           refX="9"
           refY="3"
           orient="auto"
-          markerUnits="strokeWidth"
+          markerUnits="userSpaceOnUse"
         >
           <path
             d="M0,0 L0,6 L9,3 z"
             fill={
               selected
-                ? '#8b5cf6' // purple for selected (matching the old loopback color)
+                ? (isManual ? '#4b5563' : '#10b981') // match line colors when selected
                 : isManual
-                  ? '#10b981' // green for manual (green-500)
-                  : '#f59e0b' // amber for automated (amber-500) - more distinct than orange
+                  ? '#4b5563' // dark grey for manual (gray-600)
+                  : '#10b981' // green for automated (green-500)
             }
             className="transition-colors duration-200"
           />

@@ -22,7 +22,7 @@ Guidelines for React component development, UI consistency, theming, component p
   - Always implement dark mode variants using Tailwind's `dark:` prefix
   - Ensure proper contrast and accessibility in both light and dark themes
   - Test components in both theme modes during development
-- **Tailwind CSS**: Use Tailwind CSS classes for all styling, avoiding custom CSS when possible
+- **Tailwind CSS**: EXCLUSIVELY USE Tailwind CSS classes for all styling.
 - **Consistent Spacing**: Follow established spacing patterns using Tailwind's spacing scale
 
 ## Component Integration

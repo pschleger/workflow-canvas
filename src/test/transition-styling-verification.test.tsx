@@ -56,10 +56,10 @@ describe('Transition Styling Verification', () => {
     )
 
     const baseEdge = screen.getByTestId('base-edge')
-    
-    // Check that manual transitions have green color and thin stroke
-    expect(baseEdge).toHaveClass('stroke-green-500')
-    expect(baseEdge).toHaveStyle({ strokeWidth: '1.5' })
+
+    // Check that manual transitions have dark grey color and thin stroke
+    expect(baseEdge).toHaveClass('stroke-gray-600')
+    expect(baseEdge).toHaveStyle({ strokeWidth: '1' })
   })
 
   it('should apply correct inline styles for automated transitions', () => {
@@ -73,10 +73,10 @@ describe('Transition Styling Verification', () => {
     )
 
     const baseEdge = screen.getByTestId('base-edge')
-    
-    // Check that automated transitions have amber color and thick stroke
-    expect(baseEdge).toHaveClass('stroke-amber-500')
-    expect(baseEdge).toHaveStyle({ strokeWidth: '3' })
+
+    // Check that automated transitions have green color and 2x thick stroke
+    expect(baseEdge).toHaveClass('stroke-green-500')
+    expect(baseEdge).toHaveStyle({ strokeWidth: '2' })
   })
 
   it('should apply correct inline styles for selected transitions', () => {
@@ -90,9 +90,9 @@ describe('Transition Styling Verification', () => {
     )
 
     const baseEdge = screen.getByTestId('base-edge')
-    
-    // Check that selected transitions have blue color and medium stroke
-    expect(baseEdge).toHaveClass('stroke-blue-500')
+
+    // Check that selected transitions have green color (for automated)
+    expect(baseEdge).toHaveClass('stroke-green-500')
     expect(baseEdge).toHaveStyle({ strokeWidth: '2' })
   })
 
@@ -107,9 +107,9 @@ describe('Transition Styling Verification', () => {
     )
 
     const baseEdge = screen.getByTestId('base-edge')
-    
-    // Check that undefined manual is treated as automated (amber + thick)
-    expect(baseEdge).toHaveClass('stroke-amber-500')
-    expect(baseEdge).toHaveStyle({ strokeWidth: '3' })
+
+    // Check that undefined manual is treated as automated (green + 2x thick)
+    expect(baseEdge).toHaveClass('stroke-green-500')
+    expect(baseEdge).toHaveStyle({ strokeWidth: '2' })
   })
 })

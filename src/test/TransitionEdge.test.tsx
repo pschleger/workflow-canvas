@@ -162,8 +162,9 @@ describe('TransitionEdge', () => {
     render(<TransitionEdge {...selectedProps} />)
 
     const baseEdge = screen.getByTestId('base-edge')
-    expect(baseEdge).toHaveClass('stroke-blue-500')
-    expect(baseEdge).toHaveStyle({ strokeWidth: '2' })
+    // Selected manual transitions show as grey
+    expect(baseEdge).toHaveClass('stroke-gray-600')
+    expect(baseEdge).toHaveStyle({ strokeWidth: '1' })
   })
 
   describe('Manual vs Automated Transition Styling', () => {
@@ -219,8 +220,8 @@ describe('TransitionEdge', () => {
 
       // Colors should be different
       expect(manualClassName).not.toBe(automatedClassName)
-      expect(manualClassName).toContain('green')
-      expect(automatedClassName).toContain('amber')
+      expect(manualClassName).toContain('gray')
+      expect(automatedClassName).toContain('green')
     })
 
     it('should apply thicker stroke for automated transitions', () => {
@@ -247,9 +248,9 @@ describe('TransitionEdge', () => {
       const automatedStyle = automatedCall[0].style || {}
 
       // Manual transitions should have thinner stroke
-      expect(manualStyle.strokeWidth).toBe(1.5)
-      // Automated transitions should have thicker stroke
-      expect(automatedStyle.strokeWidth).toBe(3)
+      expect(manualStyle.strokeWidth).toBe(1)
+      // Automated transitions should have thicker stroke (2x)
+      expect(automatedStyle.strokeWidth).toBe(2)
     })
 
     it('should handle undefined manual attribute as automated (false)', () => {
@@ -274,8 +275,8 @@ describe('TransitionEdge', () => {
       const call = mockBaseEdge.mock.calls[mockBaseEdge.mock.calls.length - 1]
       const style = call[0].style || {}
 
-      // Should be treated as automated (thick stroke)
-      expect(style.strokeWidth).toBe(3)
+      // Should be treated as automated (2x thick stroke)
+      expect(style.strokeWidth).toBe(2)
     })
   })
 })
