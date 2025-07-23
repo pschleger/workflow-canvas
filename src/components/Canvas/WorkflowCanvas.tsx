@@ -3,6 +3,7 @@ import {
   ReactFlow,
   Background,
   Controls,
+  ControlButton,
   MiniMap,
   useNodesState,
   useEdgesState,
@@ -13,11 +14,13 @@ import {
 } from '@xyflow/react';
 import type { Node, Edge, Connection } from '@xyflow/react';
 import '@xyflow/react/dist/style.css';
+import { Network } from 'lucide-react';
 
 import type { UIWorkflowData, UIStateData, UITransitionData, StateDefinition, TransitionDefinition } from '../../types/workflow';
 import { StateNode } from './StateNode';
 import { TransitionEdge } from './TransitionEdge';
 import { generateTransitionId, generateLayoutTransitionId, migrateLayoutTransitionId, validateTransitionExists, parseLayoutTransitionId } from '../../utils/transitionUtils';
+import { autoLayoutWorkflow, canAutoLayout } from '../../utils/autoLayout';
 
 interface WorkflowCanvasProps {
   workflow: UIWorkflowData | null;
@@ -321,10 +324,6 @@ const WorkflowCanvasInner: React.FC<WorkflowCanvasProps> = ({
     cleanedWorkflow?.layout?.updatedAt,
     Object.keys(cleanedWorkflow?.configuration?.states || {}).length,
     cleanedWorkflow?.layout?.states?.length,
-    // Add state definitions to dependencies so canvas re-renders when state data changes
-    JSON.stringify(cleanedWorkflow?.configuration?.states || {}),
-    // Add transition definitions to dependencies so canvas re-renders when transition data changes
-    JSON.stringify(Object.values(cleanedWorkflow?.configuration?.states || {}).flatMap(state => state.transitions))
   ]);
 
   const onConnect = useCallback(
@@ -387,6 +386,17 @@ const WorkflowCanvasInner: React.FC<WorkflowCanvasProps> = ({
     },
     [cleanedWorkflow, onWorkflowUpdate]
   );
+
+  // Auto-layout handler with smooth animations
+  const handleAutoLayout = useCallback(() => {
+    if (!cleanedWorkflow || !canAutoLayout(cleanedWorkflow)) return;
+
+    const layoutedWorkflow = autoLayoutWorkflow(cleanedWorkflow);
+
+    // Apply the layout with animation by updating the workflow
+    // React Flow will automatically animate the position changes
+    onWorkflowUpdate(layoutedWorkflow, 'Applied auto-layout');
+  }, [cleanedWorkflow, onWorkflowUpdate]);
 
   // Handle double-click detection on pane
   const lastClickTimeRef = useRef<number>(0);
@@ -532,7 +542,16 @@ const WorkflowCanvasInner: React.FC<WorkflowCanvasProps> = ({
         zoomOnDoubleClick={false}
       >
         <Background />
-        <Controls />
+        <Controls>
+          <ControlButton
+            onClick={handleAutoLayout}
+            disabled={!canAutoLayout(cleanedWorkflow)}
+            title="Auto-arrange states using hierarchical layout"
+          >
+            <Network size={16} />
+          </ControlButton>
+        </Controls>
+
         <MiniMap
           nodeColor={(node) => {
             const state = node.data?.state as UIStateData;
@@ -567,6 +586,7 @@ const WorkflowCanvasInner: React.FC<WorkflowCanvasProps> = ({
             <div>• Drag transition labels to reposition</div>
             <div>• Click edit icons to modify</div>
             <div>• Drag states to rearrange</div>
+            <div>• Use layout button to auto-arrange states</div>
           </div>
         </Panel>
       </ReactFlow>

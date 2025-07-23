@@ -28,6 +28,7 @@ A web-based application for configuring, visualizing, and editing state machine 
 - **Build Tool**: Vite 7.0
 - **Styling**: Tailwind CSS v4
 - **Diagramming**: React Flow (@xyflow/react)
+- **Layout Engine**: Dagre (@dagrejs/dagre) for automatic state arrangement
 - **Icons**: Lucide React
 - **UI Components**: Headless UI
 

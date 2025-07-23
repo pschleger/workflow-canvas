@@ -81,6 +81,7 @@ Interactive canvas features for direct workflow manipulation. See [features/canv
 - **Connection Creation**: Create transitions by dragging between state handles
 - **Visual State Indicators**: Color-coded states (green for initial, red for final)
 - **Zoom and Pan**: Navigate large workflows with zoom and pan controls
+- **Auto-Layout**: Automatically arrange states using hierarchical layout algorithm (Dagre)
 - **Quick Help Panel**: On-screen guidance for available interactions
 
 ### State Management Features
@@ -131,8 +132,11 @@ Based on prior architecture and tooling discussions, the following technologies 
 - OpenAPI definitions optional but beneficial for type safety.
 
 ### Optional Enhancements
-- **Dagre layout engine** (via React Flow) for auto-layout of state diagrams.
 - **Dark Mode** via Tailwind’s dark variant and React state toggle.
 - **Jest + React Testing Library** for UI testing (optional but encouraged).
+
+### Implemented Enhancements
+- **Dagre layout engine** for automatic hierarchical layout of state diagrams - ✅ Implemented
+- **Auto-layout button** in canvas controls for one-click state arrangement - ✅ Implemented
 
 This stack is optimized for fast prototyping, clean separation of concerns, and easy onboarding of other frontend developers.

@@ -5,7 +5,13 @@ import React from 'react'
 vi.mock('@xyflow/react', () => ({
   ReactFlow: ({ children }: { children: React.ReactNode }) => React.createElement('div', { 'data-testid': 'react-flow' }, children),
   Background: () => React.createElement('div', { 'data-testid': 'react-flow-background' }),
-  Controls: () => React.createElement('div', { 'data-testid': 'react-flow-controls' }),
+  Controls: ({ children }: { children?: React.ReactNode }) => React.createElement('div', { 'data-testid': 'react-flow-controls' }, children),
+  ControlButton: ({ children, onClick, disabled, title }: any) => React.createElement('button', {
+    onClick,
+    disabled,
+    title,
+    'data-testid': 'control-button'
+  }, children),
   MiniMap: () => React.createElement('div', { 'data-testid': 'react-flow-minimap' }),
   Panel: ({ children }: { children: React.ReactNode }) => React.createElement('div', { 'data-testid': 'react-flow-panel' }, children),
   Handle: () => React.createElement('div', { 'data-testid': 'react-flow-handle' }),
@@ -23,6 +29,10 @@ vi.mock('@xyflow/react', () => ({
   getBezierPath: () => ['M 0 0 L 100 100', 50, 50],
   EdgeLabelRenderer: ({ children }: { children: React.ReactNode }) => React.createElement('div', { 'data-testid': 'edge-label-renderer' }, children),
   BaseEdge: () => React.createElement('path', { 'data-testid': 'base-edge' }),
+  ReactFlowProvider: ({ children }: { children: React.ReactNode }) => React.createElement('div', { 'data-testid': 'react-flow-provider' }, children),
+  useReactFlow: () => ({
+    screenToFlowPosition: vi.fn((pos) => ({ x: pos.x - 100, y: pos.y - 50 }))
+  }),
 }))
 
 // Mock file operations

@@ -6,6 +6,11 @@ type: "always_apply"
 
 Comprehensive testing standards and practices that must be followed for all code changes, bug fixes, and feature implementations.
 
+## Test Execution Standards
+
+- **Always Use Run Mode**: When running tests via npm, always use `npm run test:run` (non-watch mode) instead of `npm test` (watch mode)
+- **Proper Test Commands**: Use `npm run test:run` for single test execution, `npm run test:run -- <pattern>` for specific test files
+
 ## Test-Driven Development (TDD)
 
 - **Red-Green-Refactor Cycle**: Follow the TDD cycle for all new features and improvements:
