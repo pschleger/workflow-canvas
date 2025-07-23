@@ -21,11 +21,11 @@ export interface LayoutResult {
 }
 
 const DEFAULT_OPTIONS: Required<LayoutOptions> = {
-  nodeWidth: 200,
-  nodeHeight: 80,
-  rankSeparation: 120, // Increased vertical spacing between levels
-  nodeSeparation: 80,  // Increased horizontal spacing between nodes at same level
-  edgeSeparation: 30,  // Increased spacing between parallel edges
+  nodeWidth: 160,      // Reduced to match smaller node size
+  nodeHeight: 60,      // Reduced to match smaller node size
+  rankSeparation: 150, // Increased vertical spacing between levels
+  nodeSeparation: 120, // Increased horizontal spacing between nodes at same level
+  edgeSeparation: 40,  // Increased spacing between parallel edges
   direction: 'TB', // Top to Bottom
 };
 

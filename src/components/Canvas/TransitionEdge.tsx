@@ -209,10 +209,10 @@ export const TransitionEdge: React.FC<EdgeProps> = ({
           onDoubleClick={handleDoubleClick}
         >
           <div
-            className={`bg-white dark:bg-gray-800 border rounded-lg shadow-lg px-3 py-2 text-sm transition-all duration-200 ${
+            className={`bg-blue-50 dark:bg-blue-900/20 border rounded-full shadow-md px-3 py-1.5 text-sm transition-all duration-200 ${
               selected
-                ? 'border-blue-500 ring-2 ring-blue-500 ring-opacity-20'
-                : 'border-gray-200 dark:border-gray-600 hover:border-blue-400'
+                ? 'border-blue-500 ring-2 ring-blue-500 ring-opacity-20 bg-blue-100 dark:bg-blue-800/30'
+                : 'border-blue-200 dark:border-blue-700 hover:border-blue-400 hover:bg-blue-100 dark:hover:bg-blue-800/30'
             } ${isDragging ? 'shadow-xl scale-105' : ''} ${
               shouldUseBentPath ? 'border-purple-400 bg-purple-50 dark:bg-purple-900/20' : ''
             }`}
@@ -220,31 +220,30 @@ export const TransitionEdge: React.FC<EdgeProps> = ({
             <div className="flex items-center space-x-2">
               {/* Drag Handle */}
               <div className="flex-shrink-0 text-gray-400 hover:text-gray-600 dark:hover:text-gray-300">
-                <Move size={12} />
+                <Move size={10} />
               </div>
 
               {/* Transition Name */}
               <div className="flex-1 min-w-0">
-                <div className="font-medium text-gray-900 dark:text-white truncate">
-                  {transition.definition.name || 'Unnamed Transition'}
+                <div className="font-medium text-xs text-gray-900 dark:text-white truncate">
+                  {transition.definition.name || 'Unnamed'}
                 </div>
+              </div>
 
-                {/* Indicators */}
-                <div className="flex items-center space-x-2 mt-1">
-                  {hasCriterion && (
-                    <div className="flex items-center space-x-1 text-xs text-blue-600 dark:text-blue-400">
-                      <Filter size={12} />
-                      <span>Criterion</span>
-                    </div>
-                  )}
+              {/* Compact Indicators */}
+              <div className="flex items-center space-x-1">
+                {hasCriterion && (
+                  <div className="text-blue-600 dark:text-blue-400" title="Has criterion">
+                    <Filter size={10} />
+                  </div>
+                )}
 
-                  {hasProcessors && (
-                    <div className="flex items-center space-x-1 text-xs text-green-600 dark:text-green-400">
-                      <Zap size={12} />
-                      <span>{transition.definition.processors!.length}</span>
-                    </div>
-                  )}
-                </div>
+                {hasProcessors && (
+                  <div className="flex items-center space-x-0.5 text-green-600 dark:text-green-400" title={`${transition.definition.processors!.length} processors`}>
+                    <Zap size={10} />
+                    <span className="text-xs">{transition.definition.processors!.length}</span>
+                  </div>
+                )}
               </div>
 
               {/* Reset Button (only show if label is moved) */}
@@ -263,21 +262,14 @@ export const TransitionEdge: React.FC<EdgeProps> = ({
               <button
                 onClick={handleEdit}
                 onMouseDown={(e) => e.stopPropagation()}
-                className="flex-shrink-0 p-1 text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 transition-colors"
+                className="flex-shrink-0 p-0.5 text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 transition-colors"
                 title="Edit transition"
               >
-                <Edit size={12} />
+                <Edit size={10} />
               </button>
             </div>
 
-            {/* Criterion Preview */}
-            {hasCriterion && (
-              <div className="mt-2 text-xs text-gray-600 dark:text-gray-400">
-                <div className="truncate">
-                  Criterion: {transition.definition.criterion!.type}
-                </div>
-              </div>
-            )}
+
           </div>
         </div>
       </EdgeLabelRenderer>

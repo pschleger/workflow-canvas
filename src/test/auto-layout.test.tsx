@@ -268,7 +268,7 @@ describe('Auto-Layout Functionality', () => {
         expect(Math.abs(stateAPos.x - stateBPos.x)).toBeGreaterThan(0)
       }
 
-      // Verify improved spacing - states should have adequate separation
+      // Verify optimized spacing - states should have adequate separation
       const positions = result.states.map(s => s.position)
       for (let i = 0; i < positions.length; i++) {
         for (let j = i + 1; j < positions.length; j++) {
@@ -276,19 +276,20 @@ describe('Auto-Layout Functionality', () => {
             Math.pow(positions[i].x - positions[j].x, 2) +
             Math.pow(positions[i].y - positions[j].y, 2)
           )
-          expect(distance).toBeGreaterThan(80) // Improved minimum separation
+          expect(distance).toBeGreaterThan(100) // Optimized minimum separation
         }
       }
 
       // Verify hierarchical structure - start should be at top, end at bottom
       if (startPos && endPos) {
         expect(startPos.y).toBeLessThan(endPos.y)
+        expect(Math.abs(endPos.y - startPos.y)).toBeGreaterThan(400) // Good vertical separation
       }
 
       // Verify branching - stateA and stateB should be at same Y level but different X
       if (stateAPos && stateBPos) {
         expect(stateAPos.y).toEqual(stateBPos.y) // Same level
-        expect(Math.abs(stateAPos.x - stateBPos.x)).toBeGreaterThan(200) // Good horizontal separation
+        expect(Math.abs(stateAPos.x - stateBPos.x)).toBeGreaterThan(250) // Excellent horizontal separation
       }
     })
   })
