@@ -101,6 +101,22 @@ export function validateTransitionExists(transitionId: string, workflowStates: R
 }
 
 /**
+ * Validates that both source and target states exist for a layout transition ID
+ * @param layoutTransitionId The layout transition ID (format: "sourceState-to-targetState")
+ * @param stateIds Set of valid state IDs
+ * @returns true if both source and target states exist
+ */
+export function validateTransitionStates(layoutTransitionId: string, stateIds: Set<string>): boolean {
+  const parsed = parseLayoutTransitionId(layoutTransitionId);
+  if (!parsed) {
+    return false;
+  }
+
+  const { sourceStateId, targetStateId } = parsed;
+  return stateIds.has(sourceStateId) && stateIds.has(targetStateId);
+}
+
+/**
  * Gets a transition definition from the workflow configuration
  * @param transitionId The transition ID
  * @param workflowStates The workflow states configuration

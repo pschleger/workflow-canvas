@@ -72,10 +72,11 @@ export const TransitionEditor: React.FC<TransitionEditorProps> = ({
   const handleSave = () => {
     const parsed = validateJson(jsonText);
     if (parsed !== null && isValid && transitionId) {
-      // Update the parsed definition with the name from the form field
+      // Use the name from the JSON if it exists, otherwise use the inline editor name
+      const finalName = (parsed.name !== undefined) ? parsed.name : transitionName.trim();
       const updatedDefinition: TransitionDefinition = {
         ...parsed,
-        name: transitionName.trim()
+        name: finalName
       };
       onSave(transitionId, updatedDefinition);
       onClose();

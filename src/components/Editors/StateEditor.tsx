@@ -70,10 +70,11 @@ export const StateEditor: React.FC<StateEditorProps> = ({
   const handleSave = () => {
     const parsed = validateJson(jsonText);
     if (parsed !== null && isValid && stateId) {
-      // Update the parsed definition with the name from the form field
+      // Use the name from the JSON if it exists and is not empty, otherwise use the inline editor name
+      const finalName = (parsed.name && parsed.name.trim()) ? parsed.name.trim() : (stateName.trim() || stateId);
       const updatedDefinition: StateDefinition = {
         ...parsed,
-        name: stateName.trim() || stateId
+        name: finalName
       };
       onSave(stateId, updatedDefinition);
       onClose();

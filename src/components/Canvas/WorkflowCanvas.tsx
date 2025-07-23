@@ -17,7 +17,7 @@ import '@xyflow/react/dist/style.css';
 import type { UIWorkflowData, UIStateData, UITransitionData, StateDefinition, TransitionDefinition } from '../../types/workflow';
 import { StateNode } from './StateNode';
 import { TransitionEdge } from './TransitionEdge';
-import { generateTransitionId, generateLayoutTransitionId, migrateLayoutTransitionId } from '../../utils/transitionUtils';
+import { generateTransitionId, generateLayoutTransitionId, migrateLayoutTransitionId, validateTransitionExists, parseLayoutTransitionId } from '../../utils/transitionUtils';
 
 interface WorkflowCanvasProps {
   workflow: UIWorkflowData | null;
@@ -51,9 +51,15 @@ export function cleanupWorkflowState(workflow: UIWorkflowData): UIWorkflowData {
 
     // Remove layout transitions that reference non-existent states
     const cleanedLayoutTransitions = (workflow.layout.transitions || []).filter(layoutTransition => {
-      // Use the new transition utilities to validate transitions
-      // This handles both old format and new escaped format
-      return validateTransitionStates(layoutTransition.id, configStateIds);
+      // Check if this is a layout transition ID (sourceState-to-targetState format)
+      const layoutParsed = parseLayoutTransitionId(layoutTransition.id);
+      if (layoutParsed) {
+        // For layout transition IDs, check if both source and target states exist
+        return configStateIds.has(layoutParsed.sourceStateId) && configStateIds.has(layoutParsed.targetStateId);
+      }
+
+      // For canonical transition IDs, use the transition validation
+      return validateTransitionExists(layoutTransition.id, workflow.configuration.states);
     });
 
     return {
@@ -314,7 +320,11 @@ const WorkflowCanvasInner: React.FC<WorkflowCanvasProps> = ({
     cleanedWorkflow?.id,
     cleanedWorkflow?.layout?.updatedAt,
     Object.keys(cleanedWorkflow?.configuration?.states || {}).length,
-    cleanedWorkflow?.layout?.states?.length
+    cleanedWorkflow?.layout?.states?.length,
+    // Add state definitions to dependencies so canvas re-renders when state data changes
+    JSON.stringify(cleanedWorkflow?.configuration?.states || {}),
+    // Add transition definitions to dependencies so canvas re-renders when transition data changes
+    JSON.stringify(Object.values(cleanedWorkflow?.configuration?.states || {}).flatMap(state => state.transitions))
   ]);
 
   const onConnect = useCallback(
