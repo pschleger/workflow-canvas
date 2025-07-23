@@ -31,7 +31,7 @@ export const LoopbackEdge: React.FC<EdgeProps> = ({
 
   // Initialize drag offset from stored label position
   const [dragOffset, setDragOffset] = useState(() => {
-    return transition?.labelPosition || { x: 0, y: -60 }; // Default position above the node
+    return transition?.labelPosition || { x: 30, y: -30 }; // Default position to the right and above
   });
 
   // Update drag offset when transition changes
@@ -39,67 +39,91 @@ export const LoopbackEdge: React.FC<EdgeProps> = ({
     if (transition?.labelPosition) {
       setDragOffset(transition.labelPosition);
     } else {
-      setDragOffset({ x: 0, y: -60 });
+      setDragOffset({ x: 30, y: -30 });
     }
   }, [transition?.id, transition?.labelPosition]);
 
-  // Calculate actual handle positions based on handle IDs
-  const getHandlePosition = (handleId: string | null, centerX: number, centerY: number) => {
-    if (!handleId) return { x: centerX, y: centerY };
+  // Helper function to get handle direction based on handle ID
+  const getHandleDirection = (handleId: string | null): { x: number; y: number } => {
+    if (!handleId) return { x: 0, y: 0 };
 
-    const nodeWidth = 120; // StateNode width
-    const nodeHeight = 60; // StateNode height
-    const handleOffset = 12; // Distance from node edge
+    // Extract position from handle ID (remove -source/-target suffix)
+    const position = handleId.replace(/-source$|-target$/, '');
 
-    if (handleId.includes('top-left')) return { x: centerX - nodeWidth/2, y: centerY - nodeHeight/2 - handleOffset };
-    if (handleId.includes('top-center')) return { x: centerX, y: centerY - nodeHeight/2 - handleOffset };
-    if (handleId.includes('top-right')) return { x: centerX + nodeWidth/2, y: centerY - nodeHeight/2 - handleOffset };
-    if (handleId.includes('left-center')) return { x: centerX - nodeWidth/2 - handleOffset, y: centerY };
-    if (handleId.includes('right-center')) return { x: centerX + nodeWidth/2 + handleOffset, y: centerY };
-    if (handleId.includes('bottom-left')) return { x: centerX - nodeWidth/2, y: centerY + nodeHeight/2 + handleOffset };
-    if (handleId.includes('bottom-center')) return { x: centerX, y: centerY + nodeHeight/2 + handleOffset };
-    if (handleId.includes('bottom-right')) return { x: centerX + nodeWidth/2, y: centerY + nodeHeight/2 + handleOffset };
-
-    return { x: centerX, y: centerY };
+    // Map handle positions to tangent directions
+    switch (position) {
+      case 'top-left':
+      case 'top-center':
+      case 'top-right':
+        return { x: 0, y: -1 }; // Upward direction
+      case 'bottom-left':
+      case 'bottom-center':
+      case 'bottom-right':
+        return { x: 0, y: 1 }; // Downward direction
+      case 'left-center':
+        return { x: -1, y: 0 }; // Leftward direction
+      case 'right-center':
+        return { x: 1, y: 0 }; // Rightward direction
+      default:
+        return { x: 0, y: 0 };
+    }
   };
 
   // Create a curved loop path for self-connections
   const createLoopPath = () => {
-    // Calculate actual handle positions
-    const sourceHandlePos = getHandlePosition(transition?.sourceHandle, sourceX, sourceY);
-    const targetHandlePos = getHandlePosition(transition?.targetHandle, sourceX, sourceY);
+    // React Flow provides the actual handle coordinates directly
+    const startX = sourceX;
+    const startY = sourceY;
+    const endX = targetX;
+    const endY = targetY;
 
-    // Calculate loop parameters
-    const loopSize = 40; // Size of the loop
-    const offsetX = dragOffset.x;
-    const offsetY = dragOffset.y;
+    // Get handle directions for proper tangent angles
+    const sourceDirection = getHandleDirection(transition?.sourceHandle);
+    const targetDirection = getHandleDirection(transition?.targetHandle);
 
-    // Use actual handle positions as start and end points
-    const startX = sourceHandlePos.x;
-    const startY = sourceHandlePos.y;
-    const endX = targetHandlePos.x;
-    const endY = targetHandlePos.y;
+    // Calculate the base position for the loop (midpoint between handles)
+    const baseMidX = (startX + endX) / 2;
+    const baseMidY = (startY + endY) / 2;
 
-    // Calculate control points for a smooth loop between the handles
-    const midX = (startX + endX) / 2 + offsetX;
-    const midY = (startY + endY) / 2 + offsetY;
+    // Apply user's drag offset to the loop position
+    const loopCenterX = baseMidX + dragOffset.x;
+    const loopCenterY = baseMidY + dragOffset.y;
 
-    // Create control points that form a nice loop
-    const controlPoint1X = midX + loopSize;
-    const controlPoint1Y = midY - loopSize;
-    const controlPoint2X = midX + loopSize;
-    const controlPoint2Y = midY + loopSize;
+    // Calculate loop size based on distance between handles and drag offset
+    const handleDistance = Math.sqrt(Math.pow(endX - startX, 2) + Math.pow(endY - startY, 2));
+    const baseLoopSize = Math.max(60, handleDistance * 1.5); // Ensure minimum size for visibility
+    const dragDistance = Math.sqrt(dragOffset.x * dragOffset.x + dragOffset.y * dragOffset.y);
+    const loopSize = baseLoopSize + dragDistance * 0.5;
 
-    // Create the loop path using cubic bezier curves
+    // Create control points that respect handle directions
+    // Control point 1: extends from source handle in its natural direction
+    const controlPoint1Distance = loopSize * 0.8;
+    const controlPoint1X = startX + sourceDirection.x * controlPoint1Distance;
+    const controlPoint1Y = startY + sourceDirection.y * controlPoint1Distance;
+
+    // Control point 2: approaches target handle from its natural direction
+    const controlPoint2Distance = loopSize * 0.8;
+    const controlPoint2X = endX + targetDirection.x * controlPoint2Distance;
+    const controlPoint2Y = endY + targetDirection.y * controlPoint2Distance;
+
+    // Adjust control points to create a proper loop that goes through the drag position
+    // Blend the natural directions with the loop center position
+    const blendFactor = 0.6;
+    const finalControlPoint1X = controlPoint1X * (1 - blendFactor) + loopCenterX * blendFactor;
+    const finalControlPoint1Y = controlPoint1Y * (1 - blendFactor) + loopCenterY * blendFactor;
+    const finalControlPoint2X = controlPoint2X * (1 - blendFactor) + loopCenterX * blendFactor;
+    const finalControlPoint2Y = controlPoint2Y * (1 - blendFactor) + loopCenterY * blendFactor;
+
+    // Create the loop path using cubic bezier curves with proper tangent directions
     const path = `M ${startX},${startY}
-                  C ${controlPoint1X},${controlPoint1Y}
-                    ${controlPoint2X},${controlPoint2Y}
+                  C ${finalControlPoint1X},${finalControlPoint1Y}
+                    ${finalControlPoint2X},${finalControlPoint2Y}
                     ${endX},${endY}`;
 
     return {
       path,
-      labelX: midX + offsetX,
-      labelY: midY + offsetY - 20 // Offset label above the loop
+      labelX: loopCenterX,
+      labelY: loopCenterY
     };
   };
 
@@ -138,41 +162,50 @@ export const LoopbackEdge: React.FC<EdgeProps> = ({
 
     const startX = e.clientX;
     const startY = e.clientY;
-    const startOffset = { ...dragOffset };
+    const startOffsetX = dragOffset.x;
+    const startOffsetY = dragOffset.y;
     let hasMoved = false;
 
-    const handleMouseMove = (moveEvent: MouseEvent) => {
-      const deltaX = moveEvent.clientX - startX;
-      const deltaY = moveEvent.clientY - startY;
+    const handleMouseMove = (e: MouseEvent) => {
+      const deltaX = e.clientX - startX;
+      const deltaY = e.clientY - startY;
 
       // Only consider it a drag if moved more than a few pixels
       if (Math.abs(deltaX) > 3 || Math.abs(deltaY) > 3) {
         hasMoved = true;
       }
 
-      const newOffset = {
-        x: startOffset.x + deltaX,
-        y: startOffset.y + deltaY
-      };
-
-      setDragOffset(newOffset);
+      setDragOffset({
+        x: startOffsetX + deltaX,
+        y: startOffsetY + deltaY,
+      });
     };
 
-    const handleMouseUp = () => {
+    const handleMouseUp = (finalEvent: MouseEvent) => {
       setIsDragging(false);
-
-      // Only update if there was actual movement
-      if (hasMoved && transition && onUpdate) {
-        // Only update the label position, preserve the user's chosen handles
-        const updatedTransition = {
-          ...transition,
-          labelPosition: dragOffset
-        };
-        onUpdate(updatedTransition);
-      }
-
       document.removeEventListener('mousemove', handleMouseMove);
       document.removeEventListener('mouseup', handleMouseUp);
+
+      // Only update if there was actual movement
+      if (hasMoved) {
+        // Calculate final position
+        const finalOffset = {
+          x: startOffsetX + (finalEvent.clientX - startX),
+          y: startOffsetY + (finalEvent.clientY - startY),
+        };
+
+        // Update local state immediately to prevent spring-back
+        setDragOffset(finalOffset);
+
+        // Save the new label position to the transition
+        if (transition && onUpdate) {
+          const updatedTransition = {
+            ...transition,
+            labelPosition: finalOffset,
+          };
+          onUpdate(updatedTransition);
+        }
+      }
     };
 
     document.addEventListener('mousemove', handleMouseMove);
@@ -183,9 +216,9 @@ export const LoopbackEdge: React.FC<EdgeProps> = ({
 
   const resetLabelPosition = (e: React.MouseEvent) => {
     e.stopPropagation();
-    const defaultOffset = { x: 0, y: -60 };
+    const defaultOffset = { x: 30, y: -30 };
     setDragOffset(defaultOffset);
-    
+
     if (transition && onUpdate) {
       const updatedTransition = {
         ...transition,

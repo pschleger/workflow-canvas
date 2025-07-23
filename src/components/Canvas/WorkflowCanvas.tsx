@@ -366,6 +366,8 @@ const WorkflowCanvasInner: React.FC<WorkflowCanvasProps> = ({
       const currentOnTransitionEdit = onTransitionEditRef.current;
       const currentHandleTransitionUpdate = handleTransitionUpdateRef.current;
 
+
+
       const newNodes = currentUiStates.map((state) => ({
         id: state.id,
         type: 'stateNode',
@@ -382,6 +384,8 @@ const WorkflowCanvasInner: React.FC<WorkflowCanvasProps> = ({
       const newEdges = currentUiTransitions.map((transition) => {
         // Check if this is a loop-back transition (same source and target)
         const isLoopback = transition.sourceStateId === transition.targetStateId;
+
+
 
         return {
           id: transition.id,
@@ -400,6 +404,8 @@ const WorkflowCanvasInner: React.FC<WorkflowCanvasProps> = ({
           animated: true,
         };
       });
+
+
 
       setNodes(newNodes);
       setEdges(newEdges);
@@ -490,7 +496,7 @@ const WorkflowCanvasInner: React.FC<WorkflowCanvasProps> = ({
         id: transitionId,
         sourceHandle: params.sourceHandle || null,
         targetHandle: params.targetHandle || null,
-        labelPosition: { x: 0, y: 0 }
+        labelPosition: isLoopback ? { x: 30, y: -30 } : { x: 0, y: 0 }
       };
 
 
