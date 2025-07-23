@@ -4,18 +4,21 @@ import { EntityWorkflowSelector } from './components/Sidebar/EntityWorkflowSelec
 import { WorkflowCanvas } from './components/Canvas/WorkflowCanvas';
 import { StateEditor } from './components/Editors/StateEditor';
 import { TransitionEditor } from './components/Editors/TransitionEditor';
+import { WorkflowImportDialog } from './components/Dialogs/WorkflowImportDialog';
 import { MockApiService } from './services/mockApi';
 import { configService } from './services/configService';
 import { historyService } from './services/historyService';
 import { useKeyboardShortcuts } from './hooks/useKeyboardShortcuts';
-import type { WorkflowConfiguration, CanvasLayout, UIWorkflowData, StateDefinition, TransitionDefinition, AppConfiguration } from './types/workflow';
+import type { WorkflowConfiguration, CanvasLayout, UIWorkflowData, StateDefinition, TransitionDefinition, AppConfiguration, WorkflowImportMetadata, EntityModelIdentifier } from './types/workflow';
+import { generateWorkflowId } from './types/workflow';
+import { autoLayoutWorkflow } from './utils/autoLayout';
 import { parseTransitionId, getTransitionDefinition } from './utils/transitionUtils';
 
 // Helper function to combine configuration and layout into UI workflow data
-function combineWorkflowData(workflowId: string, entityId: string, config: WorkflowConfiguration, layout: CanvasLayout): UIWorkflowData {
+function combineWorkflowData(workflowId: string, entityModel: EntityModelIdentifier, config: WorkflowConfiguration, layout: CanvasLayout): UIWorkflowData {
   return {
     id: workflowId,
-    entityId: entityId,
+    entityModel: entityModel,
     configuration: config,
     layout: layout,
     createdAt: new Date().toISOString(), // Mock creation time
@@ -36,6 +39,9 @@ function App() {
   const [undoCount, setUndoCount] = useState(0);
   const [redoCount, setRedoCount] = useState(0);
   const [loading, setLoading] = useState(false);
+
+  // Import dialog state
+  const [importDialogOpen, setImportDialogOpen] = useState(false);
 
   // Update history state when workflow changes
   const updateHistoryState = useCallback(() => {
@@ -81,8 +87,14 @@ function App() {
       ]);
 
       if (configResponse.success && layoutResponse.success) {
+        // Create entity model from entityId (temporary for existing workflows)
+        const entityModel: EntityModelIdentifier = {
+          modelName: entityId,
+          modelVersion: 1
+        };
+
         // Combine the segregated data for UI
-        const combinedWorkflow = combineWorkflowData(workflowId, entityId, configResponse.data, layoutResponse.data);
+        const combinedWorkflow = combineWorkflowData(workflowId, entityModel, configResponse.data, layoutResponse.data);
         setCurrentWorkflow(combinedWorkflow);
       } else {
         console.error('Failed to load workflow:', configResponse.message || layoutResponse.message);
@@ -107,11 +119,11 @@ function App() {
     // Update history state
     updateHistoryState();
 
-    // Save both configuration and layout
+    // Save both configuration and layout (use modelName as entityId for compatibility)
     try {
       await Promise.all([
-        MockApiService.updateWorkflowConfiguration(workflow.entityId, workflow.id, workflow.configuration),
-        MockApiService.updateCanvasLayout(workflow.entityId, workflow.layout)
+        MockApiService.updateWorkflowConfiguration(workflow.entityModel.modelName, workflow.id, workflow.configuration),
+        MockApiService.updateCanvasLayout(workflow.entityModel.modelName, workflow.layout)
       ]);
     } catch (error) {
       console.error('Error saving workflow:', error);
@@ -314,48 +326,70 @@ function App() {
   }, []);
 
   const handleImport = useCallback(() => {
-    const input = document.createElement('input');
-    input.type = 'file';
-    input.accept = '.json';
-    input.onchange = (e) => {
-      const file = (e.target as HTMLInputElement).files?.[0];
-      if (file) {
-        const reader = new FileReader();
-        reader.onload = (e) => {
-          try {
-            const workflowData = JSON.parse(e.target?.result as string);
-
-            // Validate the imported data structure
-            if (workflowData.id && workflowData.states && workflowData.transitions) {
-              setCurrentWorkflow(workflowData);
-              setSelectedEntityId(workflowData.entityId);
-              setSelectedWorkflowId(workflowData.id);
-
-              // Save to mock backend using the new segregated structure
-              handleWorkflowUpdate(workflowData, 'Imported workflow');
-
-              alert('Workflow imported successfully!');
-            } else {
-              alert('Invalid workflow file format');
-            }
-          } catch (error) {
-            alert('Error parsing workflow file: ' + error);
-          }
-        };
-        reader.readAsText(file);
-      }
-    };
-    input.click();
+    setImportDialogOpen(true);
   }, []);
+
+  const handleWorkflowImport = useCallback((config: WorkflowConfiguration, metadata: WorkflowImportMetadata) => {
+    try {
+      const entityModel: EntityModelIdentifier = {
+        modelName: metadata.modelName,
+        modelVersion: metadata.modelVersion
+      };
+
+      // Generate workflow ID from configuration and entity model
+      const workflowId = generateWorkflowId(config.name, entityModel);
+
+      // Create initial layout with default positions (will be auto-laid out)
+      const now = new Date().toISOString();
+      const initialLayout: CanvasLayout = {
+        workflowId,
+        version: 1,
+        updatedAt: now,
+        states: Object.keys(config.states).map(stateId => ({
+          id: stateId,
+          position: { x: 0, y: 0 } // Default position - will be auto-laid out
+        })),
+        transitions: [] // Will be populated by canvas
+      };
+
+      // Create UIWorkflowData
+      const uiWorkflow = combineWorkflowData(workflowId, entityModel, config, initialLayout);
+
+      // Apply auto-layout for proper positioning
+      const layoutedWorkflow = autoLayoutWorkflow(uiWorkflow);
+
+      // Set as current workflow
+      setCurrentWorkflow(layoutedWorkflow);
+      setSelectedEntityId(entityModel.modelName); // Use modelName as entity selection
+      setSelectedWorkflowId(workflowId);
+
+      // Save to mock backend
+      handleWorkflowUpdate(layoutedWorkflow, 'Imported workflow');
+
+      alert(`Workflow "${config.name}" imported successfully!`);
+    } catch (error) {
+      console.error('Error importing workflow:', error);
+      alert(`Error importing workflow: ${error instanceof Error ? error.message : 'Unknown error'}`);
+    }
+  }, [handleWorkflowUpdate]);
 
   const handleExport = useCallback(() => {
     if (currentWorkflow) {
-      const dataStr = JSON.stringify(currentWorkflow, null, 2);
+      // Create export data with the new structure including timestamps
+      const exportData = {
+        ...currentWorkflow,
+        createdAt: currentWorkflow.createdAt,
+        updatedAt: new Date().toISOString() // Update timestamp on export
+      };
+
+      const dataStr = JSON.stringify(exportData, null, 2);
       const dataUri = 'data:application/json;charset=utf-8,'+ encodeURIComponent(dataStr);
 
-      // Fix: Use configuration.name instead of name (which doesn't exist on UIWorkflowData)
-      const workflowName = currentWorkflow.configuration.name || currentWorkflow.id || 'workflow';
-      const exportFileDefaultName = `${workflowName.replace(/\s+/g, '-').toLowerCase()}.json`;
+      // Generate filename from workflow name and entity model
+      const workflowName = currentWorkflow.configuration.name || 'workflow';
+      const modelName = currentWorkflow.entityModel.modelName;
+      const modelVersion = currentWorkflow.entityModel.modelVersion;
+      const exportFileDefaultName = `${workflowName.replace(/\s+/g, '-').toLowerCase()}-${modelName.replace(/\s+/g, '-').toLowerCase()}-v${modelVersion}.json`;
 
       const linkElement = document.createElement('a');
       linkElement.setAttribute('href', dataUri);
@@ -430,6 +464,13 @@ function App() {
         }}
         onSave={handleTransitionSave}
         onDelete={handleTransitionDelete}
+      />
+
+      {/* Import Dialog */}
+      <WorkflowImportDialog
+        isOpen={importDialogOpen}
+        onClose={() => setImportDialogOpen(false)}
+        onImport={handleWorkflowImport}
       />
     </div>
   );

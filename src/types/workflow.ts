@@ -98,14 +98,39 @@ export interface WorkflowSummary {
   updatedAt: string;
 }
 
+// Composite identifier for entity model
+export interface EntityModelIdentifier {
+  modelName: string;
+  modelVersion: number;
+}
+
+// Import metadata required when importing a WorkflowConfiguration
+export interface WorkflowImportMetadata {
+  modelName: string;
+  modelVersion: number;
+}
+
+// Utility function to generate workflow ID from configuration and entity model
+export function generateWorkflowId(workflowName: string, entityModel: EntityModelIdentifier): string {
+  const sanitizedWorkflowName = workflowName.replace(/\s+/g, '-').toLowerCase();
+  const sanitizedModelName = entityModel.modelName.replace(/\s+/g, '-').toLowerCase();
+  return `${sanitizedWorkflowName}-${sanitizedModelName}-v${entityModel.modelVersion}`;
+}
+
+// Import metadata required when importing a WorkflowConfiguration
+export interface WorkflowImportMetadata {
+  modelName: string;
+  modelVersion: number;
+}
+
 // Combined workflow data for UI rendering (merges schema config with layout)
 export interface UIWorkflowData {
-  id: string;
-  entityId: string;
+  id: string; // Generated from workflow name + model name + model version
+  entityModel: EntityModelIdentifier;
   configuration: WorkflowConfiguration;
   layout: CanvasLayout;
-  createdAt: string;
-  updatedAt: string;
+  createdAt: string; // Only for export
+  updatedAt: string; // Only for export
 }
 
 // UI-specific state representation (simplified for canvas - just references transitions)

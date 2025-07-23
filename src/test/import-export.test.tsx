@@ -7,7 +7,8 @@ import userEvent from '@testing-library/user-event'
 import { ReactFlowProvider } from '@xyflow/react'
 import App from '../App'
 import { WorkflowCanvas } from '../components/Canvas/WorkflowCanvas'
-import type { WorkflowConfiguration, UIWorkflowData, CanvasLayout } from '../types/workflow'
+import type { WorkflowConfiguration, UIWorkflowData, CanvasLayout, EntityModelIdentifier } from '../types/workflow'
+import { generateWorkflowId } from '../types/workflow'
 import { autoLayoutWorkflow } from '../utils/autoLayout'
 import paymentRequestWorkflow from './fixtures/payment-request-workflow.json'
 
@@ -52,8 +53,11 @@ vi.mock('../services/historyService', () => ({
 
 // Helper function to create UIWorkflowData from WorkflowConfiguration (shared across tests)
 const createUIWorkflowFromConfig = (config: WorkflowConfiguration): UIWorkflowData => {
-  const workflowId = 'payment-request-test'
-  const entityId = 'payment-entity'
+  const entityModel: EntityModelIdentifier = {
+    modelName: 'payment-entity',
+    modelVersion: 1
+  }
+  const workflowId = generateWorkflowId(config.name, entityModel)
   const now = new Date().toISOString()
 
   // Create initial layout with default positions
@@ -70,7 +74,7 @@ const createUIWorkflowFromConfig = (config: WorkflowConfiguration): UIWorkflowDa
 
   return {
     id: workflowId,
-    entityId,
+    entityModel,
     configuration: config,
     layout: initialLayout,
     createdAt: now,
@@ -95,7 +99,7 @@ describe('Import/Export Functionality', () => {
       
       // Verify it's a proper WorkflowConfiguration, not UIWorkflowData
       expect(paymentRequestWorkflow).not.toHaveProperty('id')
-      expect(paymentRequestWorkflow).not.toHaveProperty('entityId')
+      expect(paymentRequestWorkflow).not.toHaveProperty('entityModel')
       expect(paymentRequestWorkflow).not.toHaveProperty('layout')
       expect(paymentRequestWorkflow).not.toHaveProperty('createdAt')
       expect(paymentRequestWorkflow).not.toHaveProperty('updatedAt')
@@ -129,11 +133,17 @@ describe('Import/Export Functionality', () => {
       
       // Verify structure
       expect(uiWorkflow).toHaveProperty('id')
-      expect(uiWorkflow).toHaveProperty('entityId')
+      expect(uiWorkflow).toHaveProperty('entityModel')
       expect(uiWorkflow).toHaveProperty('configuration')
       expect(uiWorkflow).toHaveProperty('layout')
       expect(uiWorkflow).toHaveProperty('createdAt')
       expect(uiWorkflow).toHaveProperty('updatedAt')
+
+      // Verify entity model structure
+      expect(uiWorkflow.entityModel).toHaveProperty('modelName')
+      expect(uiWorkflow.entityModel).toHaveProperty('modelVersion')
+      expect(uiWorkflow.entityModel.modelName).toBe('payment-entity')
+      expect(uiWorkflow.entityModel.modelVersion).toBe(1)
       
       // Verify configuration is preserved
       expect(uiWorkflow.configuration).toEqual(config)
@@ -199,6 +209,39 @@ describe('Import/Export Functionality', () => {
 
       // Note: Individual state nodes may not render in test environment due to React Flow's
       // virtual rendering, but the workflow info confirms the data is properly loaded
+    })
+  })
+
+  describe('Workflow ID Generation', () => {
+    it('should generate proper workflow ID from name and entity model', () => {
+      const config = paymentRequestWorkflow as WorkflowConfiguration
+      const entityModel: EntityModelIdentifier = {
+        modelName: 'Payment Entity',
+        modelVersion: 2
+      }
+
+      const workflowId = generateWorkflowId(config.name, entityModel)
+
+      // Should be: workflow-name-entity-name-vversion
+      expect(workflowId).toBe('payment-request-workflow-payment-entity-v2')
+
+      // Test with different inputs
+      const testCases = [
+        {
+          workflowName: 'Simple Workflow',
+          entityModel: { modelName: 'User', modelVersion: 1 },
+          expected: 'simple-workflow-user-v1'
+        },
+        {
+          workflowName: 'Complex   Workflow   Name',
+          entityModel: { modelName: 'Order Management', modelVersion: 3 },
+          expected: 'complex-workflow-name-order-management-v3'
+        }
+      ]
+
+      testCases.forEach(({ workflowName, entityModel, expected }) => {
+        expect(generateWorkflowId(workflowName, entityModel)).toBe(expected)
+      })
     })
   })
 
@@ -283,11 +326,15 @@ describe('Import/Export Functionality', () => {
 
       // Verify export structure
       expect(parsedExport).toHaveProperty('id')
-      expect(parsedExport).toHaveProperty('entityId')
+      expect(parsedExport).toHaveProperty('entityModel')
       expect(parsedExport).toHaveProperty('configuration')
       expect(parsedExport).toHaveProperty('layout')
       expect(parsedExport).toHaveProperty('createdAt')
       expect(parsedExport).toHaveProperty('updatedAt')
+
+      // Verify entity model structure
+      expect(parsedExport.entityModel).toHaveProperty('modelName')
+      expect(parsedExport.entityModel).toHaveProperty('modelVersion')
 
       // Verify configuration is preserved
       expect(parsedExport.configuration).toEqual(config)
@@ -580,7 +627,7 @@ describe('Import/Export Functionality', () => {
 
       // Verify export has all required UIWorkflowData properties
       expect(exportedData).toHaveProperty('id')
-      expect(exportedData).toHaveProperty('entityId')
+      expect(exportedData).toHaveProperty('entityModel')
       expect(exportedData).toHaveProperty('configuration')
       expect(exportedData).toHaveProperty('layout')
       expect(exportedData).toHaveProperty('createdAt')
@@ -627,16 +674,18 @@ describe('Import/Export Functionality', () => {
       const uiWorkflow = createUIWorkflowFromConfig(config)
       const layoutedWorkflow = autoLayoutWorkflow(uiWorkflow)
 
-      // Fixed export filename logic
+      // Fixed export filename logic (new structure with entity model)
       const fixedExportLogic = (workflow: UIWorkflowData) => {
-        const workflowName = workflow.configuration.name || workflow.id || 'workflow'
-        return `${workflowName.replace(/\s+/g, '-').toLowerCase()}.json`
+        const workflowName = workflow.configuration.name || 'workflow'
+        const modelName = workflow.entityModel.modelName
+        const modelVersion = workflow.entityModel.modelVersion
+        return `${workflowName.replace(/\s+/g, '-').toLowerCase()}-${modelName.replace(/\s+/g, '-').toLowerCase()}-v${modelVersion}.json`
       }
 
       const filename = fixedExportLogic(layoutedWorkflow)
 
-      // Verify the fix works
-      expect(filename).toBe('payment-request-workflow.json')
+      // Verify the fix works with new structure
+      expect(filename).toBe('payment-request-workflow-payment-entity-v1.json')
       expect(filename).toMatch(/\.json$/)
       expect(filename).not.toContain(' ') // No spaces
     })
@@ -647,16 +696,18 @@ describe('Import/Export Functionality', () => {
 
       // Test with various workflow names
       const testCases = [
-        { name: 'Payment Request Workflow', expected: 'payment-request-workflow.json' },
-        { name: 'Simple Name', expected: 'simple-name.json' },
-        { name: 'Name   With   Multiple   Spaces', expected: 'name-with-multiple-spaces.json' },
-        { name: 'UPPERCASE NAME', expected: 'uppercase-name.json' },
-        { name: '', expected: 'payment-request-test.json' }, // Falls back to workflow.id
+        { name: 'Payment Request Workflow', expected: 'payment-request-workflow-payment-entity-v1.json' },
+        { name: 'Simple Name', expected: 'simple-name-payment-entity-v1.json' },
+        { name: 'Name   With   Multiple   Spaces', expected: 'name-with-multiple-spaces-payment-entity-v1.json' },
+        { name: 'UPPERCASE NAME', expected: 'uppercase-name-payment-entity-v1.json' },
+        { name: '', expected: 'workflow-payment-entity-v1.json' }, // Falls back to 'workflow'
       ]
 
       const fixedExportLogic = (workflow: UIWorkflowData) => {
-        const workflowName = workflow.configuration.name || workflow.id || 'workflow'
-        return `${workflowName.replace(/\s+/g, '-').toLowerCase()}.json`
+        const workflowName = workflow.configuration.name || 'workflow'
+        const modelName = workflow.entityModel.modelName
+        const modelVersion = workflow.entityModel.modelVersion
+        return `${workflowName.replace(/\s+/g, '-').toLowerCase()}-${modelName.replace(/\s+/g, '-').toLowerCase()}-v${modelVersion}.json`
       }
 
       testCases.forEach(({ name, expected }) => {
@@ -678,15 +729,24 @@ describe('Import/Export Functionality', () => {
       const uiWorkflow = createUIWorkflowFromConfig(config)
       const layoutedWorkflow = autoLayoutWorkflow(uiWorkflow)
 
-      // Simulate the fixed export logic from App.tsx
+      // Simulate the fixed export logic from App.tsx (new structure)
       const simulateAppExport = (currentWorkflow: UIWorkflowData) => {
         if (currentWorkflow) {
-          const dataStr = JSON.stringify(currentWorkflow, null, 2);
+          // Create export data with timestamps
+          const exportData = {
+            ...currentWorkflow,
+            createdAt: currentWorkflow.createdAt,
+            updatedAt: new Date().toISOString()
+          };
+
+          const dataStr = JSON.stringify(exportData, null, 2);
           const dataUri = 'data:application/json;charset=utf-8,'+ encodeURIComponent(dataStr);
 
-          // Fixed logic: Use configuration.name instead of name
-          const workflowName = currentWorkflow.configuration.name || currentWorkflow.id || 'workflow';
-          const exportFileDefaultName = `${workflowName.replace(/\s+/g, '-').toLowerCase()}.json`;
+          // Fixed logic: Use configuration.name with entity model
+          const workflowName = currentWorkflow.configuration.name || 'workflow';
+          const modelName = currentWorkflow.entityModel.modelName;
+          const modelVersion = currentWorkflow.entityModel.modelVersion;
+          const exportFileDefaultName = `${workflowName.replace(/\s+/g, '-').toLowerCase()}-${modelName.replace(/\s+/g, '-').toLowerCase()}-v${modelVersion}.json`;
 
           return {
             dataStr,
@@ -701,13 +761,17 @@ describe('Import/Export Functionality', () => {
 
       // Verify the export works without errors
       expect(result).not.toBeNull();
-      expect(result!.filename).toBe('payment-request-workflow.json');
+      expect(result!.filename).toBe('payment-request-workflow-payment-entity-v1.json');
       expect(result!.dataStr).toContain('"name": "Payment Request Workflow"');
+      expect(result!.dataStr).toContain('"modelName": "payment-entity"');
+      expect(result!.dataStr).toContain('"modelVersion": 1');
       expect(result!.dataUri).toContain('data:application/json;charset=utf-8,');
 
       // Verify the exported data can be parsed back
       const exportedData = JSON.parse(result!.dataStr);
       expect(exportedData.configuration.name).toBe('Payment Request Workflow');
+      expect(exportedData.entityModel.modelName).toBe('payment-entity');
+      expect(exportedData.entityModel.modelVersion).toBe(1);
     })
   })
 })

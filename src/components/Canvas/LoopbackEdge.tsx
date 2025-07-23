@@ -221,17 +221,46 @@ export const LoopbackEdge: React.FC<EdgeProps> = ({
     }
   };
 
+  // Determine if transition is manual or automated
+  // If manual is undefined, treat as automated (false)
+  const isManual = transition?.definition.manual === true;
+
+  // Define colors and thickness based on manual/automated state
+  const getLoopbackStyles = () => {
+    if (selected) {
+      return {
+        className: 'stroke-purple-500',
+        style: { strokeWidth: 2 }
+      };
+    }
+
+    if (isManual) {
+      // Manual transitions: thinner, different color (green)
+      return {
+        className: 'stroke-green-500 dark:stroke-green-400 hover:stroke-green-600',
+        style: { strokeWidth: 1.5 }
+      };
+    } else {
+      // Automated transitions: thicker, different color (amber)
+      return {
+        className: 'stroke-amber-500 dark:stroke-amber-400 hover:stroke-amber-600',
+        style: { strokeWidth: 3 }
+      };
+    }
+  };
+
+  // Create unique marker ID for this loopback transition
+  const markerId = `arrow-loopback-${id}`;
+  const styles = getLoopbackStyles();
+
   return (
     <>
       <BaseEdge
         id={id as string}
         path={edgePath}
-        className={`transition-all duration-200 ${
-          selected 
-            ? 'stroke-purple-500 stroke-2' 
-            : 'stroke-purple-400 dark:stroke-purple-500 hover:stroke-purple-600'
-        }`}
-        markerEnd="url(#arrow)"
+        className={`transition-all duration-200 ${styles.className}`}
+        style={styles.style}
+        markerEnd={`url(#${markerId})`}
       />
       
       <EdgeLabelRenderer>
@@ -297,6 +326,31 @@ export const LoopbackEdge: React.FC<EdgeProps> = ({
           </div>
         </div>
       </EdgeLabelRenderer>
+
+      {/* Custom arrow marker with unique ID */}
+      <defs>
+        <marker
+          id={markerId}
+          markerWidth="10"
+          markerHeight="10"
+          refX="9"
+          refY="3"
+          orient="auto"
+          markerUnits="strokeWidth"
+        >
+          <path
+            d="M0,0 L0,6 L9,3 z"
+            fill={
+              selected
+                ? '#8b5cf6' // purple for selected (matching the old loopback color)
+                : isManual
+                  ? '#10b981' // green for manual (green-500)
+                  : '#f59e0b' // amber for automated (amber-500) - more distinct than orange
+            }
+            className="transition-colors duration-200"
+          />
+        </marker>
+      </defs>
     </>
   );
 };

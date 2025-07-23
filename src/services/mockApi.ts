@@ -115,6 +115,7 @@ const mockWorkflowConfigurations: Record<string, WorkflowConfiguration> = {
           {
             name: 'Send Verification Email',
             next: 'email-sent',
+            manual: false,
             criterion: {
               type: 'simple',
               field: 'email',
@@ -136,6 +137,7 @@ const mockWorkflowConfigurations: Record<string, WorkflowConfiguration> = {
           {
             name: 'Invalid Email',
             next: 'failed',
+            manual: false,
             criterion: {
               type: 'simple',
               field: 'email',
@@ -156,6 +158,7 @@ const mockWorkflowConfigurations: Record<string, WorkflowConfiguration> = {
           {
             name: 'Email Verified',
             next: 'verified',
+            manual: true,
             criterion: {
               type: 'simple',
               field: 'verification_token',
@@ -166,6 +169,7 @@ const mockWorkflowConfigurations: Record<string, WorkflowConfiguration> = {
           {
             name: 'Verification Timeout',
             next: 'failed',
+            manual: false,
             criterion: {
               type: 'simple',
               field: 'timeout',

@@ -183,17 +183,47 @@ export const TransitionEdge: React.FC<EdgeProps> = ({
   const hasCriterion = transition.definition.criterion !== undefined;
   const hasProcessors = transition.definition.processors && transition.definition.processors.length > 0;
 
+  // Determine if transition is manual or automated
+  // If manual is undefined, treat as automated (false)
+  const isManual = transition.definition.manual === true;
+  const isAutomated = !isManual;
+
+  // Define colors and thickness based on manual/automated state
+  const getTransitionStyles = () => {
+    if (selected) {
+      return {
+        className: 'stroke-blue-500',
+        style: { strokeWidth: 2 }
+      };
+    }
+
+    if (isManual) {
+      // Manual transitions: thinner, different color (green)
+      return {
+        className: 'stroke-green-500 dark:stroke-green-400 hover:stroke-green-600',
+        style: { strokeWidth: 1.5 }
+      };
+    } else {
+      // Automated transitions: thicker, different color (orange/amber)
+      return {
+        className: 'stroke-amber-500 dark:stroke-amber-400 hover:stroke-amber-600',
+        style: { strokeWidth: 3 }
+      };
+    }
+  };
+
+  // Create unique marker ID for this transition
+  const markerId = `arrow-${id}`;
+  const styles = getTransitionStyles();
+
   return (
     <>
       <BaseEdge
         id={id as string}
         path={edgePath}
-        className={`transition-all duration-200 ${
-          selected 
-            ? 'stroke-blue-500 stroke-2' 
-            : 'stroke-gray-400 dark:stroke-gray-500 hover:stroke-blue-400'
-        }`}
-        markerEnd="url(#arrow)"
+        className={`transition-all duration-200 ${styles.className}`}
+        style={styles.style}
+        markerEnd={`url(#${markerId})`}
       />
       
       <EdgeLabelRenderer>
@@ -274,10 +304,10 @@ export const TransitionEdge: React.FC<EdgeProps> = ({
         </div>
       </EdgeLabelRenderer>
 
-      {/* Custom arrow marker */}
+      {/* Custom arrow marker with unique ID */}
       <defs>
         <marker
-          id="arrow"
+          id={markerId}
           markerWidth="10"
           markerHeight="10"
           refX="9"
@@ -287,7 +317,13 @@ export const TransitionEdge: React.FC<EdgeProps> = ({
         >
           <path
             d="M0,0 L0,6 L9,3 z"
-            fill={selected ? '#3b82f6' : '#9ca3af'}
+            fill={
+              selected
+                ? '#3b82f6' // blue for selected
+                : isManual
+                  ? '#10b981' // green for manual (green-500)
+                  : '#f59e0b' // amber for automated (amber-500) - more distinct than orange
+            }
             className="transition-colors duration-200"
           />
         </marker>
