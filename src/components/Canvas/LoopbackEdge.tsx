@@ -142,14 +142,7 @@ export const LoopbackEdge: React.FC<EdgeProps> = ({
     handleEdit(e);
   };
 
-  const handleClick = (e: React.MouseEvent) => {
-    // Only handle click if we're not dragging and it's not on a button
-    if (!isDragging && !(e.target as HTMLElement).closest('button')) {
-      e.stopPropagation();
-      // Single click could also trigger edit for better UX
-      // handleEdit(e);
-    }
-  };
+
 
   const handleMouseDown = (e: React.MouseEvent) => {
     // Don't start dragging on double-click
@@ -251,7 +244,6 @@ export const LoopbackEdge: React.FC<EdgeProps> = ({
           }}
           className="nodrag nopan"
           onMouseDown={handleMouseDown}
-          onClick={handleClick}
           onDoubleClick={handleDoubleClick}
         >
           <div
