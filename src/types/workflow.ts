@@ -76,6 +76,8 @@ export interface TransitionLayout {
     x: number;
     y: number;
   };
+  sourceHandle?: string | null; // Handle ID for source anchor point
+  targetHandle?: string | null; // Handle ID for target anchor point
 }
 
 // Canvas layout information (visual/positional data only)
@@ -106,25 +108,29 @@ export interface UIWorkflowData {
   updatedAt: string;
 }
 
-// UI-specific state representation (combines schema state with layout)
+// UI-specific state representation (simplified for canvas - just references transitions)
 export interface UIStateData {
   id: string; // state code from schema
   name: string;
-  definition: StateDefinition;
   position: { x: number; y: number };
   properties?: Record<string, any>;
   isInitial: boolean;
   isFinal: boolean; // computed based on transitions
+  transitionIds: string[]; // References to transition objects
 }
 
-// UI-specific transition representation (flattened from schema structure)
+// UI-specific transition representation (contains all the rich metadata)
 export interface UITransitionData {
   id: string; // generated unique ID
   sourceStateId: string;
   targetStateId: string;
-  definition: TransitionDefinition;
+  definition: TransitionDefinition; // All the rich metadata (conditions, processors, etc.)
   labelPosition?: { x: number; y: number };
+  sourceHandle?: string | null; // Handle ID for source anchor point
+  targetHandle?: string | null; // Handle ID for target anchor point
 }
+
+
 
 // API Response types
 export interface ApiResponse<T> {

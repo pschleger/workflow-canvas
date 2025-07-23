@@ -10,16 +10,19 @@ import {
   ConnectionMode,
   Panel,
   useReactFlow,
-  ReactFlowProvider
+  ReactFlowProvider,
+  reconnectEdge,
+  addEdge
 } from '@xyflow/react';
-import type { Node, Edge, Connection } from '@xyflow/react';
+import type { Node, Edge, Connection, OnConnect, OnReconnect } from '@xyflow/react';
 import '@xyflow/react/dist/style.css';
 import { Network } from 'lucide-react';
 
 import type { UIWorkflowData, UIStateData, UITransitionData, StateDefinition, TransitionDefinition } from '../../types/workflow';
 import { StateNode } from './StateNode';
 import { TransitionEdge } from './TransitionEdge';
-import { generateTransitionId, generateLayoutTransitionId, migrateLayoutTransitionId, validateTransitionExists, parseLayoutTransitionId } from '../../utils/transitionUtils';
+import { LoopbackEdge } from './LoopbackEdge';
+import { generateTransitionId, generateLayoutTransitionId, migrateLayoutTransitionId, validateTransitionExists, parseLayoutTransitionId, parseTransitionId } from '../../utils/transitionUtils';
 import { autoLayoutWorkflow, canAutoLayout } from '../../utils/autoLayout';
 
 interface WorkflowCanvasProps {
@@ -36,6 +39,7 @@ const nodeTypes = {
 
 const edgeTypes = {
   transitionEdge: TransitionEdge,
+  loopbackEdge: LoopbackEdge,
 };
 
 // Helper function to ensure workflow layout and configuration are in sync
@@ -79,28 +83,7 @@ export function cleanupWorkflowState(workflow: UIWorkflowData): UIWorkflowData {
   }
 }
 
-// Helper function to convert schema workflow to UI state data
-function createUIStateData(workflow: UIWorkflowData): UIStateData[] {
-  const stateLayoutMap = new Map(workflow.layout.states.map(s => [s.id, s]));
-
-  return Object.entries(workflow.configuration.states).map(([stateId, definition]) => {
-    const layout = stateLayoutMap.get(stateId);
-    const isInitial = workflow.configuration.initialState === stateId;
-    const isFinal = definition.transitions.length === 0;
-
-    return {
-      id: stateId,
-      name: definition.name || stateId, // Use state name from definition if available, otherwise use state ID
-      definition,
-      position: layout?.position || { x: 100, y: 100 },
-      properties: layout?.properties,
-      isInitial,
-      isFinal
-    };
-  });
-}
-
-// Helper function to create UI transition data
+// Helper function to create UI transition data (rich objects with all metadata)
 function createUITransitionData(workflow: UIWorkflowData): UITransitionData[] {
   const transitionLayoutMap = new Map(workflow.layout.transitions.map(t => [t.id, t]));
   const transitions: UITransitionData[] = [];
@@ -114,18 +97,52 @@ function createUITransitionData(workflow: UIWorkflowData): UITransitionData[] {
       const layoutId = generateLayoutTransitionId(sourceStateId, transitionDef.next);
       const layout = transitionLayoutMap.get(transitionId) || transitionLayoutMap.get(layoutId);
 
-      transitions.push({
+      const uiTransition = {
         id: transitionId,
         sourceStateId,
         targetStateId: transitionDef.next,
         definition: transitionDef,
-        labelPosition: layout?.labelPosition
-      });
+        labelPosition: layout?.labelPosition,
+        sourceHandle: layout?.sourceHandle || null,
+        targetHandle: layout?.targetHandle || null
+      };
+
+
+
+      transitions.push(uiTransition);
     });
   });
 
   return transitions;
 }
+
+// Helper function to create UI state data (simple objects that reference transitions)
+function createUIStateData(workflow: UIWorkflowData, transitions: UITransitionData[]): UIStateData[] {
+  const stateLayoutMap = new Map(workflow.layout.states.map(s => [s.id, s]));
+
+  return Object.entries(workflow.configuration.states).map(([stateId, definition]) => {
+    const layout = stateLayoutMap.get(stateId);
+    const isInitial = workflow.configuration.initialState === stateId;
+    const isFinal = definition.transitions.length === 0;
+
+    // Get transition IDs for this state
+    const transitionIds = transitions
+      .filter(t => t.sourceStateId === stateId)
+      .map(t => t.id);
+
+    return {
+      id: stateId,
+      name: definition.name || stateId, // Use state name from definition if available, otherwise use state ID
+      position: layout?.position || { x: 100, y: 100 },
+      properties: layout?.properties,
+      isInitial,
+      isFinal,
+      transitionIds
+    };
+  });
+}
+
+
 
 // Inner component that uses useReactFlow hook
 const WorkflowCanvasInner: React.FC<WorkflowCanvasProps> = ({
@@ -145,13 +162,13 @@ const WorkflowCanvasInner: React.FC<WorkflowCanvasProps> = ({
 
 
   // Convert schema workflow to UI data
-  const uiStates = useMemo(() => {
-    return cleanedWorkflow ? createUIStateData(cleanedWorkflow) : [];
-  }, [cleanedWorkflow]);
-
   const uiTransitions = useMemo(() => {
     return cleanedWorkflow ? createUITransitionData(cleanedWorkflow) : [];
-  }, [cleanedWorkflow]);
+  }, [cleanedWorkflow, cleanedWorkflow?.updatedAt]);
+
+  const uiStates = useMemo(() => {
+    return cleanedWorkflow ? createUIStateData(cleanedWorkflow, uiTransitions) : [];
+  }, [cleanedWorkflow, cleanedWorkflow?.updatedAt, uiTransitions]);
 
   // Use refs to access current values in useEffect without causing dependency issues
   const uiStatesRef = useRef(uiStates);
@@ -178,14 +195,21 @@ const WorkflowCanvasInner: React.FC<WorkflowCanvasProps> = ({
       // Update existing layout transition
       updatedLayoutTransitions = existingLayoutTransitions.map(t =>
         t.id === updatedTransition.id
-          ? { ...t, labelPosition: updatedTransition.labelPosition }
+          ? {
+              ...t,
+              labelPosition: updatedTransition.labelPosition,
+              sourceHandle: updatedTransition.sourceHandle,
+              targetHandle: updatedTransition.targetHandle
+            }
           : t
       );
     } else {
       // Create new layout transition
       const newLayoutTransition = {
         id: updatedTransition.id,
-        labelPosition: updatedTransition.labelPosition
+        labelPosition: updatedTransition.labelPosition,
+        sourceHandle: updatedTransition.sourceHandle,
+        targetHandle: updatedTransition.targetHandle
       };
       updatedLayoutTransitions = [...existingLayoutTransitions, newLayoutTransition];
     }
@@ -199,7 +223,8 @@ const WorkflowCanvasInner: React.FC<WorkflowCanvasProps> = ({
       }
     };
 
-    onWorkflowUpdate(updatedWorkflow, 'Created transition connection');
+    // Only trigger undo for meaningful user changes (like dragging labels)
+    onWorkflowUpdate(updatedWorkflow, 'Updated transition layout');
   }, [cleanedWorkflow, onWorkflowUpdate]);
 
   // Create ref for handleTransitionUpdate to avoid dependency issues
@@ -211,6 +236,7 @@ const WorkflowCanvasInner: React.FC<WorkflowCanvasProps> = ({
   const [nodes, setNodes, defaultOnNodesChange] = useNodesState([]);
   const [edges, setEdges, defaultOnEdgesChange] = useEdgesState([]);
   const [isInitialized, setIsInitialized] = React.useState(false);
+  const [isInitializing, setIsInitializing] = React.useState(true);
 
   // Custom onNodesChange handler that updates workflow configuration when nodes are deleted
   const onNodesChange = useCallback((changes: any[]) => {
@@ -267,19 +293,75 @@ const WorkflowCanvasInner: React.FC<WorkflowCanvasProps> = ({
     }
   }, [defaultOnNodesChange, cleanedWorkflow, onWorkflowUpdate]);
 
-  // Custom onEdgesChange handler (for completeness, though edges are handled differently)
+  // Custom onEdgesChange handler that handles transition deletion
   const onEdgesChange = useCallback((changes: any[]) => {
+    // First apply the changes to React Flow's internal state
     defaultOnEdgesChange(changes);
-    // Edge deletion is handled through transition removal in configuration
-    // No additional workflow update needed here since edges are derived from transitions
-  }, [defaultOnEdgesChange]);
+
+    // Check if any edges were removed (e.g., via backspace key)
+    const removedEdges = changes.filter(change => change.type === 'remove');
+
+    if (removedEdges.length > 0 && cleanedWorkflow) {
+      // Update workflow configuration to remove deleted transitions
+      const removedEdgeIds = removedEdges.map(change => change.id);
+      console.log('Transitions removed via keyboard:', removedEdgeIds);
+
+      const updatedStates = { ...cleanedWorkflow.configuration.states };
+      const updatedLayoutTransitions = [...cleanedWorkflow.layout.transitions];
+
+      removedEdgeIds.forEach(edgeId => {
+        // Parse the transition ID to find the source state and transition index
+        const parsed = parseTransitionId(edgeId);
+        if (parsed) {
+          const { sourceStateId, transitionIndex } = parsed;
+          const sourceState = updatedStates[sourceStateId];
+
+          if (sourceState && sourceState.transitions[transitionIndex]) {
+            // Remove the transition from the source state
+            const updatedTransitions = [...sourceState.transitions];
+            updatedTransitions.splice(transitionIndex, 1);
+
+            updatedStates[sourceStateId] = {
+              ...sourceState,
+              transitions: updatedTransitions
+            };
+
+            // Remove the corresponding layout transition
+            const layoutIndex = updatedLayoutTransitions.findIndex(t => t.id === edgeId);
+            if (layoutIndex >= 0) {
+              updatedLayoutTransitions.splice(layoutIndex, 1);
+            }
+          }
+        }
+      });
+
+      // Create updated workflow
+      const updatedWorkflow = {
+        ...cleanedWorkflow,
+        configuration: {
+          ...cleanedWorkflow.configuration,
+          states: updatedStates
+        },
+        layout: {
+          ...cleanedWorkflow.layout,
+          transitions: updatedLayoutTransitions,
+          updatedAt: new Date().toISOString()
+        }
+      };
+
+      const description = removedEdgeIds.length === 1
+        ? `Deleted transition: ${removedEdgeIds[0]}`
+        : `Deleted ${removedEdgeIds.length} transitions`;
+
+      onWorkflowUpdate(updatedWorkflow, description);
+    }
+  }, [defaultOnEdgesChange, cleanedWorkflow, onWorkflowUpdate]);
 
   // Update nodes and edges when workflow changes - use workflow ID as dependency to avoid infinite loops
   React.useEffect(() => {
     if (cleanedWorkflow) {
       // Create nodes and edges inside useEffect to avoid dependency issues
       const currentUiStates = uiStatesRef.current;
-      const currentUiTransitions = uiTransitionsRef.current;
       const currentOnStateEdit = onStateEditRef.current;
       const currentOnTransitionEdit = onTransitionEditRef.current;
       const currentHandleTransitionUpdate = handleTransitionUpdateRef.current;
@@ -295,19 +377,29 @@ const WorkflowCanvasInner: React.FC<WorkflowCanvasProps> = ({
         },
       }));
 
-      const newEdges = currentUiTransitions.map((transition) => ({
-        id: transition.id,
-        type: 'transitionEdge',
-        source: transition.sourceStateId,
-        target: transition.targetStateId,
-        data: {
-          transition: transition,
-          onEdit: currentOnTransitionEdit,
-          onUpdate: currentHandleTransitionUpdate,
-        },
-        label: transition.definition.name || '',
-        animated: true,
-      }));
+      const currentUiTransitions = uiTransitionsRef.current;
+
+      const newEdges = currentUiTransitions.map((transition) => {
+        // Check if this is a loop-back transition (same source and target)
+        const isLoopback = transition.sourceStateId === transition.targetStateId;
+
+        return {
+          id: transition.id,
+          type: isLoopback ? 'loopbackEdge' : 'transitionEdge',
+          source: transition.sourceStateId,
+          target: transition.targetStateId,
+          sourceHandle: transition.sourceHandle || undefined,
+          targetHandle: transition.targetHandle || undefined,
+          data: {
+            transition: transition,
+            onEdit: currentOnTransitionEdit,
+            onUpdate: currentHandleTransitionUpdate,
+            isLoopback,
+          },
+          label: transition.definition.name || '',
+          animated: true,
+        };
+      });
 
       setNodes(newNodes);
       setEdges(newEdges);
@@ -324,15 +416,53 @@ const WorkflowCanvasInner: React.FC<WorkflowCanvasProps> = ({
     cleanedWorkflow?.layout?.updatedAt,
     Object.keys(cleanedWorkflow?.configuration?.states || {}).length,
     cleanedWorkflow?.layout?.states?.length,
+    // Add dependencies to detect changes in state and transition content
+    JSON.stringify(cleanedWorkflow?.configuration?.states || {}),
+    cleanedWorkflow?.updatedAt, // This changes when the workflow is updated
   ]);
 
   const onConnect = useCallback(
     (params: Connection) => {
       if (!cleanedWorkflow || !params.source || !params.target) return;
 
+      // Validate handle IDs to prevent React Flow errors
+      // Source handles should be on bottom/right positions and end with -source
+      if (params.sourceHandle) {
+        if (!params.sourceHandle.endsWith('-source')) {
+          console.error('Invalid source handle ID:', params.sourceHandle, 'should end with -source');
+          return;
+        }
+        // Check that source handle is from a valid source position (bottom/right)
+        const sourcePosition = params.sourceHandle.replace('-source', '');
+        if (!['bottom-left', 'bottom-center', 'bottom-right', 'right-center'].includes(sourcePosition)) {
+          console.error('Invalid source handle position:', params.sourceHandle, 'source handles must be on bottom or right');
+          return;
+        }
+      }
+
+      // Target handles should be on top/left positions and end with -target
+      if (params.targetHandle) {
+        if (!params.targetHandle.endsWith('-target')) {
+          console.error('Invalid target handle ID:', params.targetHandle, 'should end with -target');
+          return;
+        }
+        // Check that target handle is from a valid target position (top/left)
+        const targetPosition = params.targetHandle.replace('-target', '');
+        if (!['top-left', 'top-center', 'top-right', 'left-center'].includes(targetPosition)) {
+          console.error('Invalid target handle position:', params.targetHandle, 'target handles must be on top or left');
+          return;
+        }
+      }
+
+      // Determine if this is a loop-back connection
+      const isLoopback = params.source === params.target;
+      const connectionType = isLoopback ? 'Loop-back Transition' : 'New Transition';
+
+
+
       // Create new transition definition
       const newTransitionDef: TransitionDefinition = {
-        name: 'New Transition',
+        name: connectionType,
         next: params.target,
         manual: false,
         disabled: false
@@ -348,17 +478,161 @@ const WorkflowCanvasInner: React.FC<WorkflowCanvasProps> = ({
         };
       }
 
+      // Store handle information in layout for precise edge routing
+      const transitionIndex = sourceState ? sourceState.transitions.length : 0;
+      const transitionId = generateTransitionId(params.source, transitionIndex);
+
+      // Update layout with handle information
+      const updatedLayoutTransitions = [...(cleanedWorkflow.layout.transitions || [])];
+      const existingTransitionIndex = updatedLayoutTransitions.findIndex(t => t.id === transitionId);
+
+      const transitionLayout = {
+        id: transitionId,
+        sourceHandle: params.sourceHandle || null,
+        targetHandle: params.targetHandle || null,
+        labelPosition: { x: 0, y: 0 }
+      };
+
+
+
+      if (existingTransitionIndex >= 0) {
+        updatedLayoutTransitions[existingTransitionIndex] = transitionLayout;
+      } else {
+        updatedLayoutTransitions.push(transitionLayout);
+      }
+
       const updatedWorkflow: UIWorkflowData = {
         ...cleanedWorkflow,
         configuration: {
           ...cleanedWorkflow.configuration,
           states: updatedStates
+        },
+        layout: {
+          ...cleanedWorkflow.layout,
+          transitions: updatedLayoutTransitions,
+          updatedAt: new Date().toISOString()
         }
       };
 
-      onWorkflowUpdate(updatedWorkflow, `Connected ${params.source} to ${params.target}`);
+      const description = isLoopback
+        ? `Added loop-back transition to ${params.source}`
+        : `Connected ${params.source} to ${params.target}`;
+
+      onWorkflowUpdate(updatedWorkflow, description);
     },
     [cleanedWorkflow, onWorkflowUpdate]
+  );
+
+  // Validate connections to prevent invalid handle combinations
+  const isValidConnection = useCallback((connection: Connection) => {
+    // Check that source handle ends with -source and is from bottom/right position
+    if (connection.sourceHandle) {
+      if (!connection.sourceHandle.endsWith('-source')) {
+        console.error('Invalid source handle:', connection.sourceHandle);
+        return false;
+      }
+      const sourcePosition = connection.sourceHandle.replace('-source', '');
+      if (!['bottom-left', 'bottom-center', 'bottom-right', 'right-center'].includes(sourcePosition)) {
+        console.error('Invalid source handle position:', connection.sourceHandle);
+        return false;
+      }
+    }
+
+    // Check that target handle ends with -target and is from top/left position
+    if (connection.targetHandle) {
+      if (!connection.targetHandle.endsWith('-target')) {
+        console.error('Invalid target handle:', connection.targetHandle);
+        return false;
+      }
+      const targetPosition = connection.targetHandle.replace('-target', '');
+      if (!['top-left', 'top-center', 'top-right', 'left-center'].includes(targetPosition)) {
+        console.error('Invalid target handle position:', connection.targetHandle);
+        return false;
+      }
+    }
+
+    return true;
+  }, []);
+
+  const onReconnect: OnReconnect = useCallback(
+    (oldEdge: Edge, newConnection: Connection) => {
+      if (!cleanedWorkflow) return;
+
+      // Find the transition that corresponds to the old edge
+      const oldTransition = uiTransitions.find(t => t.id === oldEdge.id);
+      if (!oldTransition) return;
+
+      // Parse the old transition ID to get source state and transition index
+      const parsed = parseTransitionId(oldEdge.id);
+      if (!parsed) return;
+
+      const { sourceStateId, transitionIndex } = parsed;
+
+      // Get the source state
+      const sourceState = cleanedWorkflow.configuration.states[sourceStateId];
+      if (!sourceState || transitionIndex >= sourceState.transitions.length) return;
+
+      // Get the current transition definition
+      const currentTransitionDef = sourceState.transitions[transitionIndex];
+      if (!currentTransitionDef) return;
+
+      // Determine if this is a loop-back connection
+      const isLoopback = newConnection.source === newConnection.target;
+      const connectionType = isLoopback ? 'Loop-back Transition' : currentTransitionDef.name;
+
+      // Update the transition definition with new target
+      const updatedTransitionDef: TransitionDefinition = {
+        ...currentTransitionDef,
+        next: newConnection.target!,
+        name: currentTransitionDef.name === 'New Transition' || currentTransitionDef.name === 'Loop-back Transition'
+          ? connectionType
+          : currentTransitionDef.name
+      };
+
+      // Update the source state's transitions
+      const updatedStates = { ...cleanedWorkflow.configuration.states };
+      const updatedSourceState = { ...sourceState };
+      updatedSourceState.transitions = [...sourceState.transitions];
+      updatedSourceState.transitions[transitionIndex] = updatedTransitionDef;
+      updatedStates[sourceStateId] = updatedSourceState;
+
+      // Update layout with new handle information
+      const updatedLayoutTransitions = [...(cleanedWorkflow.layout.transitions || [])];
+      const existingTransitionIndex = updatedLayoutTransitions.findIndex(t => t.id === oldEdge.id);
+
+      const transitionLayout = {
+        id: oldEdge.id,
+        sourceHandle: newConnection.sourceHandle || null,
+        targetHandle: newConnection.targetHandle || null,
+        labelPosition: oldTransition.labelPosition || { x: 0, y: 0 }
+      };
+
+      if (existingTransitionIndex >= 0) {
+        updatedLayoutTransitions[existingTransitionIndex] = transitionLayout;
+      } else {
+        updatedLayoutTransitions.push(transitionLayout);
+      }
+
+      const updatedWorkflow: UIWorkflowData = {
+        ...cleanedWorkflow,
+        configuration: {
+          ...cleanedWorkflow.configuration,
+          states: updatedStates
+        },
+        layout: {
+          ...cleanedWorkflow.layout,
+          transitions: updatedLayoutTransitions,
+          updatedAt: new Date().toISOString()
+        }
+      };
+
+      const description = isLoopback
+        ? `Reconnected transition to loop back to ${newConnection.source}`
+        : `Reconnected transition from ${sourceStateId} to ${newConnection.target}`;
+
+      onWorkflowUpdate(updatedWorkflow, description);
+    },
+    [cleanedWorkflow, uiTransitions, onWorkflowUpdate]
   );
 
   const onNodeDragStop = useCallback(
@@ -528,6 +802,8 @@ const WorkflowCanvasInner: React.FC<WorkflowCanvasProps> = ({
         onNodesChange={onNodesChange}
         onEdgesChange={onEdgesChange}
         onConnect={onConnect}
+        onReconnect={onReconnect}
+        isValidConnection={isValidConnection}
         onNodeDragStop={onNodeDragStop}
         onPaneClick={onPaneClick}
 

@@ -23,9 +23,11 @@ Interactive features that allow users to manipulate the workflow canvas directly
 ### Connection Creation
 - **Description**: Users can drag from state handles to create transitions between states
 - **Behavior**:
-  - Drag from source state handle to target state handle
+  - Drag from any of the 8 anchor points on source state to any anchor point on target state
+  - Supports loop-back transitions (state connecting to itself)
   - Automatically creates new transition definition
   - Adds transition to source state's configuration
+  - Preserves specific handle information for precise edge routing
 
 ### Visual State Indicators
 - **Description**: States are visually distinguished by their role in the workflow

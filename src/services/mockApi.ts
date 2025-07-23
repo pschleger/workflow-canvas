@@ -142,6 +142,12 @@ const mockWorkflowConfigurations: Record<string, WorkflowConfiguration> = {
               operator: 'not_contains',
               value: '@'
             }
+          },
+          {
+            name: 'Retry Registration',
+            next: 'pending',
+            manual: true,
+            disabled: false
           }
         ]
       },
@@ -457,10 +463,36 @@ const mockCanvasLayouts: Record<string, CanvasLayout> = {
       }
     ],
     transitions: [
-      { id: 'pending-to-email-sent' },
-      { id: 'email-sent-to-verified' },
-      { id: 'pending-to-failed' },
-      { id: 'email-sent-to-failed' }
+      {
+        id: 'pending-to-email-sent',
+        labelPosition: { x: 0, y: 0 },
+        sourceHandle: 'right-center-source',
+        targetHandle: 'left-center-target'
+      },
+      {
+        id: 'email-sent-to-verified',
+        labelPosition: { x: 0, y: 0 },
+        sourceHandle: 'right-center-source',
+        targetHandle: 'left-center-target'
+      },
+      {
+        id: 'pending-to-failed',
+        labelPosition: { x: 0, y: 0 },
+        sourceHandle: 'bottom-center-source',
+        targetHandle: 'top-center-target'
+      },
+      {
+        id: 'email-sent-to-failed',
+        labelPosition: { x: 0, y: 0 },
+        sourceHandle: 'bottom-center-source',
+        targetHandle: 'top-center-target'
+      },
+      {
+        id: 'pending-to-pending',
+        labelPosition: { x: 0, y: -60 },
+        sourceHandle: 'bottom-center-source',
+        targetHandle: 'top-center-target'
+      }
     ]
   },
   'user-verification': {
@@ -485,9 +517,24 @@ const mockCanvasLayouts: Record<string, CanvasLayout> = {
       }
     ],
     transitions: [
-      { id: 'unverified-to-verification-sent' },
-      { id: 'verification-sent-to-verified' },
-      { id: 'verification-sent-to-unverified' }
+      {
+        id: 'unverified-to-verification-sent',
+        labelPosition: { x: 0, y: 0 },
+        sourceHandle: 'right-center-source',
+        targetHandle: 'left-center-target'
+      },
+      {
+        id: 'verification-sent-to-verified',
+        labelPosition: { x: 0, y: 0 },
+        sourceHandle: 'right-center-source',
+        targetHandle: 'left-center-target'
+      },
+      {
+        id: 'verification-sent-to-unverified',
+        labelPosition: { x: 0, y: 0 },
+        sourceHandle: 'bottom-center-source',
+        targetHandle: 'top-center-target'
+      }
     ]
   },
   'order-fulfillment': {
@@ -522,10 +569,30 @@ const mockCanvasLayouts: Record<string, CanvasLayout> = {
       }
     ],
     transitions: [
-      { id: 'pending-to-processing' },
-      { id: 'processing-to-shipped' },
-      { id: 'shipped-to-delivered' },
-      { id: 'pending-to-cancelled' }
+      {
+        id: 'pending-to-processing',
+        labelPosition: { x: 0, y: 0 },
+        sourceHandle: 'right-center-source',
+        targetHandle: 'left-center-target'
+      },
+      {
+        id: 'processing-to-shipped',
+        labelPosition: { x: 0, y: 0 },
+        sourceHandle: 'right-center-source',
+        targetHandle: 'left-center-target'
+      },
+      {
+        id: 'shipped-to-delivered',
+        labelPosition: { x: 0, y: 0 },
+        sourceHandle: 'right-center-source',
+        targetHandle: 'left-center-target'
+      },
+      {
+        id: 'pending-to-cancelled',
+        labelPosition: { x: 0, y: 0 },
+        sourceHandle: 'bottom-center-source',
+        targetHandle: 'top-center-target'
+      }
     ]
   },
   'payment-processing': {
@@ -560,10 +627,30 @@ const mockCanvasLayouts: Record<string, CanvasLayout> = {
       }
     ],
     transitions: [
-      { id: 'initiated-to-authorized' },
-      { id: 'authorized-to-captured' },
-      { id: 'initiated-to-failed' },
-      { id: 'captured-to-refunded' }
+      {
+        id: 'initiated-to-authorized',
+        labelPosition: { x: 0, y: 0 },
+        sourceHandle: 'right-center-source',
+        targetHandle: 'left-center-target'
+      },
+      {
+        id: 'authorized-to-captured',
+        labelPosition: { x: 0, y: 0 },
+        sourceHandle: 'right-center-source',
+        targetHandle: 'left-center-target'
+      },
+      {
+        id: 'initiated-to-failed',
+        labelPosition: { x: 0, y: 0 },
+        sourceHandle: 'bottom-center-source',
+        targetHandle: 'top-center-target'
+      },
+      {
+        id: 'captured-to-refunded',
+        labelPosition: { x: 0, y: 0 },
+        sourceHandle: 'bottom-center-source',
+        targetHandle: 'top-center-target'
+      }
     ]
   }
 };

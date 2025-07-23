@@ -7,6 +7,7 @@ Each feature is documented in its own file with comprehensive requirements, user
 ## Feature Files
 
 - [Canvas Interaction](./canvas-interaction.md) - Double-click to add states, drag and drop, zoom/pan
+- [Connection System](./connection-system.md) - 8-point anchor system, loop-back transitions, smart routing
 - [State Management](./state-management.md) - Unique ID generation, position calculation, cleanup
 - [User Interface](./user-interface.md) - Dark mode, responsive design, real-time updates
 - [Editing](./editing.md) - State/transition editing, deletion with warnings, undo/redo functionality
