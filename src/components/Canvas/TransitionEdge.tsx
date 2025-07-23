@@ -112,10 +112,16 @@ export const TransitionEdge: React.FC<EdgeProps> = ({
     const startY = e.clientY;
     const startOffsetX = dragOffset.x;
     const startOffsetY = dragOffset.y;
+    let hasMoved = false;
 
     const handleMouseMove = (e: MouseEvent) => {
       const deltaX = e.clientX - startX;
       const deltaY = e.clientY - startY;
+
+      // Only consider it a drag if moved more than a few pixels
+      if (Math.abs(deltaX) > 3 || Math.abs(deltaY) > 3) {
+        hasMoved = true;
+      }
 
       setDragOffset({
         x: startOffsetX + deltaX,
@@ -128,22 +134,25 @@ export const TransitionEdge: React.FC<EdgeProps> = ({
       document.removeEventListener('mousemove', handleMouseMove);
       document.removeEventListener('mouseup', handleMouseUp);
 
-      // Calculate final position
-      const finalOffset = {
-        x: startOffsetX + (finalEvent.clientX - startX),
-        y: startOffsetY + (finalEvent.clientY - startY),
-      };
-
-      // Update local state immediately to prevent spring-back
-      setDragOffset(finalOffset);
-
-      // Save the new label position to the transition
-      if (transition && onUpdate) {
-        const updatedTransition = {
-          ...transition,
-          labelPosition: finalOffset,
+      // Only update if there was actual movement
+      if (hasMoved) {
+        // Calculate final position
+        const finalOffset = {
+          x: startOffsetX + (finalEvent.clientX - startX),
+          y: startOffsetY + (finalEvent.clientY - startY),
         };
-        onUpdate(updatedTransition);
+
+        // Update local state immediately to prevent spring-back
+        setDragOffset(finalOffset);
+
+        // Save the new label position to the transition
+        if (transition && onUpdate) {
+          const updatedTransition = {
+            ...transition,
+            labelPosition: finalOffset,
+          };
+          onUpdate(updatedTransition);
+        }
       }
     };
 

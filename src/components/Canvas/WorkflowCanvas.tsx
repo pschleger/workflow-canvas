@@ -17,7 +17,7 @@ import '@xyflow/react/dist/style.css';
 import type { UIWorkflowData, UIStateData, UITransitionData, StateDefinition, TransitionDefinition } from '../../types/workflow';
 import { StateNode } from './StateNode';
 import { TransitionEdge } from './TransitionEdge';
-import { validateTransitionStates, parseTransitionId } from '../../utils/transitionUtils';
+import { generateTransitionId, generateLayoutTransitionId, migrateLayoutTransitionId } from '../../utils/transitionUtils';
 
 interface WorkflowCanvasProps {
   workflow: UIWorkflowData | null;
@@ -81,7 +81,7 @@ function createUIStateData(workflow: UIWorkflowData): UIStateData[] {
 
     return {
       id: stateId,
-      name: stateId, // Use state ID as name since schema doesn't have separate names
+      name: definition.name || stateId, // Use state name from definition if available, otherwise use state ID
       definition,
       position: layout?.position || { x: 100, y: 100 },
       properties: layout?.properties,
@@ -98,9 +98,12 @@ function createUITransitionData(workflow: UIWorkflowData): UITransitionData[] {
 
   Object.entries(workflow.configuration.states).forEach(([sourceStateId, stateDefinition]) => {
     stateDefinition.transitions.forEach((transitionDef, index) => {
-      // Generate transition ID that matches the layout format: sourceState-to-targetState
-      const transitionId = `${sourceStateId}-to-${transitionDef.next}`;
-      const layout = transitionLayoutMap.get(transitionId);
+      // Use centralized transition ID generation
+      const transitionId = generateTransitionId(sourceStateId, index);
+
+      // Try to find layout data using both new and old formats for backward compatibility
+      const layoutId = generateLayoutTransitionId(sourceStateId, transitionDef.next);
+      const layout = transitionLayoutMap.get(transitionId) || transitionLayoutMap.get(layoutId);
 
       transitions.push({
         id: transitionId,

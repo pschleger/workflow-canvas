@@ -18,6 +18,11 @@ export const StateNode: React.FC<NodeProps> = ({ data, selected }) => {
     onEdit(state.id);
   };
 
+  const handleDoubleClick = (e: React.MouseEvent) => {
+    e.stopPropagation();
+    onEdit(state.id);
+  };
+
   const getNodeStyle = () => {
     let baseClasses = "px-4 py-3 rounded-lg border-2 bg-white dark:bg-gray-800 shadow-lg transition-all duration-200 min-w-[120px]";
     
@@ -43,7 +48,7 @@ export const StateNode: React.FC<NodeProps> = ({ data, selected }) => {
   };
 
   return (
-    <div className={getNodeStyle()}>
+    <div className={getNodeStyle()} onDoubleClick={handleDoubleClick}>
       {/* Input Handle */}
       {!state.isInitial && (
         <Handle

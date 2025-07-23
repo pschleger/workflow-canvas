@@ -44,6 +44,7 @@ export interface TransitionDefinition {
 
 // State definition (from StateDefinition.json)
 export interface StateDefinition {
+  name?: string; // Optional display name for the state
   transitions: TransitionDefinition[];
 }
 

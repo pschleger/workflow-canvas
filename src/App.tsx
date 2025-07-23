@@ -9,6 +9,7 @@ import { configService } from './services/configService';
 import { historyService } from './services/historyService';
 import { useKeyboardShortcuts } from './hooks/useKeyboardShortcuts';
 import type { WorkflowConfiguration, CanvasLayout, UIWorkflowData, StateDefinition, TransitionDefinition, AppConfiguration } from './types/workflow';
+import { parseTransitionId, getTransitionDefinition } from './utils/transitionUtils';
 
 // Helper function to combine configuration and layout into UI workflow data
 function combineWorkflowData(workflowId: string, entityId: string, config: WorkflowConfiguration, layout: CanvasLayout): UIWorkflowData {
@@ -161,12 +162,12 @@ function App() {
   const handleTransitionEdit = useCallback((transitionId: string) => {
     if (!currentWorkflow) return;
 
-    // Parse transition ID to find the transition definition
-    const [sourceStateId, transitionIndex] = transitionId.split('-');
-    const sourceState = currentWorkflow.configuration.states[sourceStateId];
-    if (sourceState && sourceState.transitions[parseInt(transitionIndex)]) {
+    // Use centralized transition utilities
+    const transitionDef = getTransitionDefinition(transitionId, currentWorkflow.configuration.states);
+
+    if (transitionDef) {
       setEditingTransitionId(transitionId);
-      setEditingTransitionDefinition(sourceState.transitions[parseInt(transitionIndex)]);
+      setEditingTransitionDefinition(transitionDef);
       setTransitionEditorOpen(true);
     }
   }, [currentWorkflow]);
@@ -193,13 +194,20 @@ function App() {
   const handleTransitionSave = useCallback((transitionId: string, definition: TransitionDefinition) => {
     if (!currentWorkflow) return;
 
-    // Parse transition ID to update the correct transition
-    const [sourceStateId, transitionIndex] = transitionId.split('-');
+    // Use centralized transition utilities
+    const parsed = parseTransitionId(transitionId);
+
+    if (!parsed) {
+      console.error('Invalid transition ID format:', transitionId);
+      return;
+    }
+
+    const { sourceStateId, transitionIndex } = parsed;
     const sourceState = currentWorkflow.configuration.states[sourceStateId];
 
     if (sourceState) {
       const updatedTransitions = [...sourceState.transitions];
-      updatedTransitions[parseInt(transitionIndex)] = definition;
+      updatedTransitions[transitionIndex] = definition;
 
       const updatedStates = {
         ...currentWorkflow.configuration.states,
