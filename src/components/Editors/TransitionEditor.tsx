@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { X, Save, Trash2, Check, AlertCircle } from 'lucide-react';
 import { InlineNameEditor } from './InlineNameEditor';
 import type { TransitionDefinition } from '../../types/workflow';
@@ -24,6 +24,14 @@ export const TransitionEditor: React.FC<TransitionEditorProps> = ({
   const [jsonText, setJsonText] = useState('');
   const [error, setError] = useState<string | null>(null);
   const [isValid, setIsValid] = useState(true);
+
+  // Resizable panel state
+  const [panelSize, setPanelSize] = useState({ width: 896, height: 600 }); // Default: max-w-4xl ≈ 896px
+  const [isResizing, setIsResizing] = useState(false);
+  const [resizeDirection, setResizeDirection] = useState<string>('');
+  const panelRef = useRef<HTMLDivElement>(null);
+  const startPosRef = useRef({ x: 0, y: 0 });
+  const startSizeRef = useRef({ width: 0, height: 0 });
 
   // Default transition definition for new transitions
   const defaultDefinition: TransitionDefinition = {
@@ -90,13 +98,91 @@ export const TransitionEditor: React.FC<TransitionEditorProps> = ({
     }
   };
 
+
+
+  // Resize handlers
+
+  const handleResizeStart = useCallback((e: React.MouseEvent, direction: string) => {
+    e.preventDefault();
+    e.stopPropagation();
+
+    setIsResizing(true);
+    setResizeDirection(direction);
+    startPosRef.current = { x: e.clientX, y: e.clientY };
+    startSizeRef.current = { ...panelSize };
+  }, [panelSize]);
+
+  // Handle resize events
+  useEffect(() => {
+    if (isResizing) {
+      const handleMouseMove = (e: MouseEvent) => {
+        if (!isResizing || !resizeDirection) return;
+
+        const deltaX = e.clientX - startPosRef.current.x;
+        const deltaY = e.clientY - startPosRef.current.y;
+        const startSize = startSizeRef.current;
+
+        let newWidth = startSize.width;
+        let newHeight = startSize.height;
+
+        // Calculate new dimensions based on resize direction
+        if (resizeDirection.includes('right')) {
+          newWidth = Math.max(400, startSize.width + deltaX);
+        }
+        if (resizeDirection.includes('left')) {
+          newWidth = Math.max(400, startSize.width - deltaX);
+        }
+        if (resizeDirection.includes('bottom')) {
+          newHeight = Math.max(300, startSize.height + deltaY);
+        }
+        if (resizeDirection.includes('top')) {
+          newHeight = Math.max(300, startSize.height - deltaY);
+        }
+
+        // Constrain to viewport
+        const maxWidth = window.innerWidth - 32;
+        const maxHeight = window.innerHeight - 32;
+        newWidth = Math.min(newWidth, maxWidth);
+        newHeight = Math.min(newHeight, maxHeight);
+
+        setPanelSize({ width: newWidth, height: newHeight });
+      };
+
+      const handleMouseUp = () => {
+        setIsResizing(false);
+        setResizeDirection('');
+      };
+
+      document.addEventListener('mousemove', handleMouseMove);
+      document.addEventListener('mouseup', handleMouseUp);
+
+      return () => {
+        document.removeEventListener('mousemove', handleMouseMove);
+        document.removeEventListener('mouseup', handleMouseUp);
+      };
+    }
+  }, [isResizing, resizeDirection]);
+
+
+
   if (!isOpen) return null;
 
   const title = transitionId ? `Edit Transition: ${transitionId}` : 'Create Transition';
 
   return (
     <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-      <div className="bg-white dark:bg-gray-800 rounded-lg shadow-xl w-full max-w-4xl mx-4 max-h-[90vh] flex flex-col">
+      <div
+        ref={panelRef}
+        className="bg-white dark:bg-gray-800 rounded-lg shadow-xl flex flex-col relative"
+        style={{
+          width: `${panelSize.width}px`,
+          height: `${panelSize.height}px`,
+          minWidth: '400px',
+          minHeight: '300px',
+          maxWidth: '95vw',
+          maxHeight: '95vh'
+        }}
+      >
         {/* Header with Inline Name Editor */}
         <div className="flex items-center justify-between p-4 border-b border-gray-200 dark:border-gray-700 flex-shrink-0">
           <div className="flex items-center space-x-3 flex-1">
@@ -190,6 +276,47 @@ export const TransitionEditor: React.FC<TransitionEditorProps> = ({
             </button>
           </div>
         </div>
+
+        {/* Resize Handles */}
+        {/* Corner handles */}
+        <div
+          className="absolute top-0 left-0 w-3 h-3 cursor-nw-resize opacity-0 hover:opacity-100 transition-opacity"
+          onMouseDown={(e) => handleResizeStart(e, 'top-left')}
+          style={{ background: 'linear-gradient(-45deg, transparent 30%, #6b7280 30%, #6b7280 70%, transparent 70%)' }}
+        />
+        <div
+          className="absolute top-0 right-0 w-3 h-3 cursor-ne-resize opacity-0 hover:opacity-100 transition-opacity"
+          onMouseDown={(e) => handleResizeStart(e, 'top-right')}
+          style={{ background: 'linear-gradient(45deg, transparent 30%, #6b7280 30%, #6b7280 70%, transparent 70%)' }}
+        />
+        <div
+          className="absolute bottom-0 left-0 w-3 h-3 cursor-sw-resize opacity-0 hover:opacity-100 transition-opacity"
+          onMouseDown={(e) => handleResizeStart(e, 'bottom-left')}
+          style={{ background: 'linear-gradient(45deg, transparent 30%, #6b7280 30%, #6b7280 70%, transparent 70%)' }}
+        />
+        <div
+          className="absolute bottom-0 right-0 w-3 h-3 cursor-se-resize opacity-0 hover:opacity-100 transition-opacity"
+          onMouseDown={(e) => handleResizeStart(e, 'bottom-right')}
+          style={{ background: 'linear-gradient(-45deg, transparent 30%, #6b7280 30%, #6b7280 70%, transparent 70%)' }}
+        />
+
+        {/* Edge handles */}
+        <div
+          className="absolute top-0 left-3 right-3 h-1 cursor-n-resize opacity-0 hover:opacity-100 transition-opacity bg-gray-500"
+          onMouseDown={(e) => handleResizeStart(e, 'top')}
+        />
+        <div
+          className="absolute bottom-0 left-3 right-3 h-1 cursor-s-resize opacity-0 hover:opacity-100 transition-opacity bg-gray-500"
+          onMouseDown={(e) => handleResizeStart(e, 'bottom')}
+        />
+        <div
+          className="absolute left-0 top-3 bottom-3 w-1 cursor-w-resize opacity-0 hover:opacity-100 transition-opacity bg-gray-500"
+          onMouseDown={(e) => handleResizeStart(e, 'left')}
+        />
+        <div
+          className="absolute right-0 top-3 bottom-3 w-1 cursor-e-resize opacity-0 hover:opacity-100 transition-opacity bg-gray-500"
+          onMouseDown={(e) => handleResizeStart(e, 'right')}
+        />
       </div>
     </div>
   );
