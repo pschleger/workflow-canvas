@@ -2,7 +2,6 @@ import { useState, useCallback, useEffect } from 'react';
 import { MainLayout } from './components/Layout/MainLayout';
 import { EntityWorkflowSelector } from './components/Sidebar/EntityWorkflowSelector';
 import { WorkflowCanvas } from './components/Canvas/WorkflowCanvas';
-import { StateEditor } from './components/Editors/StateEditor';
 import { TransitionEditor } from './components/Editors/TransitionEditor';
 import { WorkflowImportDialog } from './components/Dialogs/WorkflowImportDialog';
 import { MockApiService } from './services/mockApi';
@@ -64,11 +63,8 @@ function App() {
   }, [selectedWorkflowId, updateHistoryState]);
 
   // Editor states
-  const [editingStateId, setEditingStateId] = useState<string | null>(null);
-  const [editingStateDefinition, setEditingStateDefinition] = useState<StateDefinition | null>(null);
   const [editingTransitionId, setEditingTransitionId] = useState<string | null>(null);
   const [editingTransitionDefinition, setEditingTransitionDefinition] = useState<TransitionDefinition | null>(null);
-  const [stateEditorOpen, setStateEditorOpen] = useState(false);
   const [transitionEditorOpen, setTransitionEditorOpen] = useState(false);
 
   const handleEntitySelect = useCallback((entityId: string) => {
@@ -161,15 +157,9 @@ function App() {
   });
 
   const handleStateEdit = useCallback((stateId: string) => {
-    if (!currentWorkflow) return;
-
-    const stateDefinition = currentWorkflow.configuration.states[stateId];
-    if (stateDefinition) {
-      setEditingStateId(stateId);
-      setEditingStateDefinition(stateDefinition);
-      setStateEditorOpen(true);
-    }
-  }, [currentWorkflow]);
+    // State editing is now handled inline - this could be used for future state configuration features
+    console.log('State edit clicked for:', stateId);
+  }, []);
 
   const handleTransitionEdit = useCallback((transitionId: string) => {
     if (!currentWorkflow) return;
@@ -184,24 +174,7 @@ function App() {
     }
   }, [currentWorkflow]);
 
-  const handleStateSave = useCallback((stateId: string, definition: StateDefinition) => {
-    if (!currentWorkflow) return;
-
-    const updatedStates = {
-      ...currentWorkflow.configuration.states,
-      [stateId]: definition
-    };
-
-    const updatedWorkflow: UIWorkflowData = {
-      ...currentWorkflow,
-      configuration: {
-        ...currentWorkflow.configuration,
-        states: updatedStates
-      }
-    };
-
-    handleWorkflowUpdate(updatedWorkflow, `Updated state: ${stateId}`);
-  }, [currentWorkflow, handleWorkflowUpdate]);
+  // State saving is now handled directly in the WorkflowCanvas via inline editing
 
   const handleTransitionSave = useCallback((transitionId: string, definition: TransitionDefinition) => {
     if (!currentWorkflow) return;
@@ -241,51 +214,7 @@ function App() {
     }
   }, [currentWorkflow, handleWorkflowUpdate]);
 
-  const handleStateDelete = useCallback((stateId: string) => {
-    if (!currentWorkflow) return;
-
-
-
-    // Remove the state from configuration
-    const updatedStates = { ...currentWorkflow.configuration.states };
-    delete updatedStates[stateId];
-
-
-
-    // Remove transitions that reference this state
-    Object.keys(updatedStates).forEach(sourceStateId => {
-      const state = updatedStates[sourceStateId];
-      state.transitions = state.transitions.filter(t => t.next !== stateId);
-    });
-
-    // Handle initial state deletion - set to first remaining state or empty
-    let updatedInitialState = currentWorkflow.configuration.initialState;
-    if (updatedInitialState === stateId) {
-      const remainingStates = Object.keys(updatedStates);
-      updatedInitialState = remainingStates.length > 0 ? remainingStates[0] : '';
-
-    }
-
-    // Remove from layout
-    const updatedLayoutStates = currentWorkflow.layout.states.filter(s => s.id !== stateId);
-
-    const updatedWorkflow: UIWorkflowData = {
-      ...currentWorkflow,
-      configuration: {
-        ...currentWorkflow.configuration,
-        initialState: updatedInitialState,
-        states: updatedStates
-      },
-      layout: {
-        ...currentWorkflow.layout,
-        states: updatedLayoutStates
-      }
-    };
-
-
-
-    handleWorkflowUpdate(updatedWorkflow, `Deleted state: ${stateId}`);
-  }, [currentWorkflow, handleWorkflowUpdate]);
+  // State deletion could be handled via a context menu or other UI in the future
 
   const handleTransitionDelete = useCallback((transitionId: string) => {
     if (!currentWorkflow) return;
@@ -440,18 +369,6 @@ function App() {
       </MainLayout>
 
       {/* Editors */}
-      <StateEditor
-        stateId={editingStateId}
-        stateDefinition={editingStateDefinition}
-        isOpen={stateEditorOpen}
-        onClose={() => {
-          setStateEditorOpen(false);
-          setEditingStateId(null);
-          setEditingStateDefinition(null);
-        }}
-        onSave={handleStateSave}
-        onDelete={handleStateDelete}
-      />
 
       <TransitionEditor
         transitionId={editingTransitionId}

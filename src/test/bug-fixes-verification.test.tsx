@@ -179,22 +179,12 @@ describe('Bug Fixes Verification', () => {
         />
       );
 
-      // Modify the JSON
-      const jsonTextarea = screen.getByRole('textbox');
-      const modifiedDefinition = {
-        name: 'Modified State Name',
-        transitions: []
-      };
-      fireEvent.change(jsonTextarea, {
-        target: { value: JSON.stringify(modifiedDefinition, null, 2) }
-      });
-
-      // Click save
+      // StateEditor no longer has JSON editing - just click save to preserve current state
       const saveButton = screen.getByText('Save');
       fireEvent.click(saveButton);
 
-      // Verify save was called with correct data
-      expect(mockOnSave).toHaveBeenCalledWith('test-state', modifiedDefinition);
+      // Verify save was called with correct data (preserving original state)
+      expect(mockOnSave).toHaveBeenCalledWith('test-state', mockStateDefinition);
       expect(mockOnClose).toHaveBeenCalled();
     });
 

@@ -3,6 +3,7 @@ import { Handle, Position } from '@xyflow/react';
 import type { NodeProps } from '@xyflow/react';
 import { Edit, Play, Square } from 'lucide-react';
 import type { UIStateData } from '../../types/workflow';
+import { InlineNameEditor } from '../Editors/InlineNameEditor';
 
 // ABOUTME: This file contains the StateNode component that renders individual workflow states
 // with 8 anchor points for flexible connection routing and support for loop-back transitions.
@@ -10,7 +11,7 @@ import type { UIStateData } from '../../types/workflow';
 interface StateNodeData {
   label: string;
   state: UIStateData;
-  onEdit: (stateId: string) => void;
+  onNameChange: (stateId: string, newName: string) => void;
 }
 
 // Define anchor point identifiers for the 8-point system
@@ -68,16 +69,10 @@ const ANCHOR_POINTS: Record<AnchorPoint, {
 };
 
 export const StateNode: React.FC<NodeProps> = ({ data, selected }) => {
-  const { state, onEdit } = data as unknown as StateNodeData;
+  const { state, onNameChange } = data as unknown as StateNodeData;
 
-  const handleEdit = (e: React.MouseEvent) => {
-    e.stopPropagation();
-    onEdit(state.id);
-  };
-
-  const handleDoubleClick = (e: React.MouseEvent) => {
-    e.stopPropagation();
-    onEdit(state.id);
+  const handleNameChange = (newName: string) => {
+    onNameChange(state.id, newName);
   };
 
   // Render anchor point handles with logical directional types
@@ -142,40 +137,32 @@ export const StateNode: React.FC<NodeProps> = ({ data, selected }) => {
   };
 
   return (
-    <div className={getNodeStyle()} onDoubleClick={handleDoubleClick}>
+    <div className={getNodeStyle()}>
       {/* Render all 8 anchor points */}
       {(Object.keys(ANCHOR_POINTS) as AnchorPoint[]).map(renderAnchorPoint)}
 
       {/* Node Content */}
-      <div className="flex items-center justify-between">
-        <div className="flex items-center space-x-2 flex-1">
-          {/* State Type Icon */}
-          <div className={`flex-shrink-0 ${getIconColor()}`}>
-            {state.isInitial ? (
-              <Play size={14} fill="currentColor" />
-            ) : state.isFinal ? (
-              <Square size={14} fill="currentColor" />
-            ) : (
-              <div className="w-3 h-3 rounded-full border-2 border-current" />
-            )}
-          </div>
-
-          {/* State Name */}
-          <div className="flex-1 min-w-0">
-            <div className="font-medium text-sm text-gray-900 dark:text-white truncate">
-              {state.name}
-            </div>
-          </div>
+      <div className="flex items-center space-x-2">
+        {/* State Type Icon */}
+        <div className={`flex-shrink-0 ${getIconColor()}`}>
+          {state.isInitial ? (
+            <Play size={14} fill="currentColor" />
+          ) : state.isFinal ? (
+            <Square size={14} fill="currentColor" />
+          ) : (
+            <div className="w-3 h-3 rounded-full border-2 border-current" />
+          )}
         </div>
 
-        {/* Edit Button */}
-        <button
-          onClick={handleEdit}
-          className="flex-shrink-0 p-1 text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 transition-colors"
-          title="Edit state"
-        >
-          <Edit size={12} />
-        </button>
+        {/* State Name with Inline Editing */}
+        <div className="flex-1 min-w-0">
+          <InlineNameEditor
+            value={state.name}
+            onSave={handleNameChange}
+            className="min-w-0"
+            inputClassName="text-sm font-medium"
+          />
+        </div>
       </div>
     </div>
   );

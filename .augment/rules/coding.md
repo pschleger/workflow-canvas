@@ -25,6 +25,7 @@ Essential coding practices and constraints that govern how code changes should b
 - **No Reimplementation**: MUST ask permission before reimplementing features or systems from scratch instead of updating existing implementation
 - **Task Boundaries**: NEVER make code changes that aren't directly related to the current assigned task
 - **Unrelated Issues**: If you notice something that should be fixed but is unrelated to the current task, report it instead of fixing it immediately
+- **Green Build** Maintain green builds and adjust tests when changes break existing test suites.
 
 ## Code Preservation and Safety
 
@@ -53,3 +54,5 @@ Essential coding practices and constraints that govern how code changes should b
 - **Don't Fix Unrelated Issues**: Do not attempt to fix pre-existing problems unless explicitly asked
 - **Scope Awareness**: Understand the difference between task-related issues and pre-existing problems
 - **Seek Guidance**: When in doubt about whether an issue is related to your task, ask for clarification
+
+

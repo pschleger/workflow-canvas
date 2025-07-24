@@ -70,7 +70,11 @@ export const InlineNameEditor: React.FC<InlineNameEditorProps> = ({
 
   if (isEditing) {
     return (
-      <div className={`flex items-center space-x-1 ${className}`}>
+      <div
+        className={`flex items-center space-x-1 ${className}`}
+        onClick={(e) => e.stopPropagation()}
+        onMouseDown={(e) => e.stopPropagation()}
+      >
         <input
           ref={inputRef}
           type="text"
@@ -78,6 +82,8 @@ export const InlineNameEditor: React.FC<InlineNameEditorProps> = ({
           onChange={(e) => setEditValue(e.target.value)}
           onKeyDown={handleKeyDown}
           onBlur={handleBlur}
+          onClick={(e) => e.stopPropagation()}
+          onMouseDown={(e) => e.stopPropagation()}
           placeholder={placeholder}
           className={`flex-1 px-3 py-2 text-lg font-medium border border-blue-500 rounded focus:outline-none focus:ring-1 focus:ring-blue-500 bg-white dark:bg-gray-800 text-gray-900 dark:text-white ${inputClassName}`}
         />
@@ -102,8 +108,8 @@ export const InlineNameEditor: React.FC<InlineNameEditorProps> = ({
   }
 
   return (
-    <div className={`flex items-center space-x-2 group ${className}`}>
-      <span className="flex-1 text-lg font-medium text-gray-900 dark:text-white">
+    <div className={`flex items-center space-x-2 group ${className}`} onDoubleClick={handleStartEdit}>
+      <span className="flex-1 text-sm font-medium text-gray-900 dark:text-white truncate">
         {value || placeholder}
       </span>
       {!disabled && (

@@ -1,10 +1,13 @@
 ---
-type: "manual"
+type: "always_apply"
 ---
 
 # Communication Rules
 
 Standards for accurate, transparent communication that clearly distinguishes between verified facts and unverified content, following a Fair Witness Bot framework.
+
+## General rules
+- **Questions are no call to action**: If asked a question,  answer it directly rather than immediately jumping into making changes. Wait for explicit instructions to make modifications rather than assuming a question is a request for action.
 
 ## Factual Accuracy and Verification
 

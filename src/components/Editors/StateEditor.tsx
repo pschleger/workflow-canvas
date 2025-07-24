@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { X, Save, Trash2, Check, AlertCircle } from 'lucide-react';
+import { X, Save, Trash2 } from 'lucide-react';
 import { InlineNameEditor } from './InlineNameEditor';
 import type { StateDefinition } from '../../types/workflow';
 
@@ -21,60 +21,21 @@ export const StateEditor: React.FC<StateEditorProps> = ({
   onDelete
 }) => {
   const [stateName, setStateName] = useState('');
-  const [jsonText, setJsonText] = useState('');
-  const [error, setError] = useState<string | null>(null);
-  const [isValid, setIsValid] = useState(true);
-
-  // Default state definition for new states
-  const defaultDefinition: StateDefinition = {
-    name: stateId || '',
-    transitions: []
-  };
 
   useEffect(() => {
     if (isOpen) {
-      const definition = stateDefinition || defaultDefinition;
-      setStateName(definition.name || stateId || '');
-
-      try {
-        setJsonText(JSON.stringify(definition, null, 2));
-        setError(null);
-        setIsValid(true);
-      } catch (err) {
-        setJsonText('{}');
-        setError('Invalid data provided');
-        setIsValid(false);
-      }
+      const currentName = stateDefinition?.name || stateId || '';
+      setStateName(currentName);
     }
   }, [isOpen, stateDefinition, stateId]);
 
-  const validateJson = (text: string) => {
-    try {
-      const parsed = JSON.parse(text);
-      setError(null);
-      setIsValid(true);
-      return parsed;
-    } catch (err) {
-      const errorMessage = err instanceof Error ? err.message : 'Invalid JSON format';
-      setError(errorMessage);
-      setIsValid(false);
-      return null;
-    }
-  };
-
-  const handleTextChange = (value: string) => {
-    setJsonText(value);
-    validateJson(value);
-  };
-
   const handleSave = () => {
-    const parsed = validateJson(jsonText);
-    if (parsed !== null && isValid && stateId) {
-      // Use the name from the JSON if it exists and is not empty, otherwise use the inline editor name
-      const finalName = (parsed.name && parsed.name.trim()) ? parsed.name.trim() : (stateName.trim() || stateId);
+    if (stateId) {
+      // Preserve existing transitions and only update the name
       const updatedDefinition: StateDefinition = {
-        ...parsed,
-        name: finalName
+        ...stateDefinition,
+        name: stateName.trim() || stateId,
+        transitions: stateDefinition?.transitions || []
       };
       onSave(stateId, updatedDefinition);
       onClose();
@@ -90,98 +51,68 @@ export const StateEditor: React.FC<StateEditorProps> = ({
 
   if (!isOpen) return null;
 
-  const title = stateId ? `Edit State: ${stateId}` : 'Create State';
-
   return (
     <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-      <div className="bg-white dark:bg-gray-800 rounded-lg shadow-xl w-full max-w-4xl mx-4 max-h-[90vh] flex flex-col">
-        {/* Header with Inline Name Editor */}
-        <div className="flex items-center justify-between p-4 border-b border-gray-200 dark:border-gray-700 flex-shrink-0">
-          <div className="flex items-center space-x-3 flex-1">
-            <span className="text-lg font-medium text-gray-900 dark:text-white">Edit State:</span>
-            <InlineNameEditor
-              value={stateName}
-              placeholder={`State name (defaults to "${stateId}")`}
-              onSave={setStateName}
-              className="flex-1"
-            />
-            {isValid ? (
-              <div className="flex items-center space-x-1 text-green-600 dark:text-green-400">
-                <Check size={16} />
-                <span className="text-sm">Valid JSON</span>
-              </div>
-            ) : (
-              <div className="flex items-center space-x-1 text-red-600 dark:text-red-400">
-                <AlertCircle size={16} />
-                <span className="text-sm">Invalid JSON</span>
-              </div>
-            )}
-          </div>
+      <div className="bg-white dark:bg-gray-800 rounded-lg shadow-xl w-full max-w-md mx-4">
+        {/* Header */}
+        <div className="flex items-center justify-between p-4 border-b border-gray-200 dark:border-gray-700">
+          <h2 className="text-lg font-medium text-gray-900 dark:text-white">
+            Edit State Name
+          </h2>
           <button
             onClick={onClose}
-            className="text-gray-400 hover:text-gray-600 dark:hover:text-gray-300"
+            className="p-2 text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 transition-colors"
           >
             <X size={20} />
           </button>
         </div>
 
-        {/* JSON Editor */}
-        <div className="flex-1 p-4 overflow-hidden">
-          <div className="h-full flex flex-col">
-            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-              State Configuration (JSON)
-            </label>
-            <textarea
-              value={jsonText}
-              onChange={(e) => handleTextChange(e.target.value)}
-              className={`flex-1 w-full p-3 border rounded-md font-mono text-sm resize-none focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-white dark:bg-gray-900 text-gray-900 dark:text-white ${
-                error
-                  ? 'border-red-500 dark:border-red-400'
-                  : 'border-gray-300 dark:border-gray-600'
-              }`}
-              placeholder="Enter JSON configuration..."
-              spellCheck={false}
-            />
-
-            {error && (
-              <div className="mt-2 p-2 bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded text-sm text-red-700 dark:text-red-400">
-                <strong>Error:</strong> {error}
-              </div>
-            )}
+        {/* Content */}
+        <div className="p-4">
+          <div className="space-y-4">
+            <div>
+              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                State Name
+              </label>
+              <InlineNameEditor
+                value={stateName}
+                placeholder={`State name (defaults to "${stateId}")`}
+                onSave={setStateName}
+                className="w-full"
+              />
+            </div>
+            <div className="text-sm text-gray-500 dark:text-gray-400">
+              <p>State ID: <span className="font-mono">{stateId}</span></p>
+              <p className="mt-1">
+                To edit transitions, use the transition editor by clicking on the transition edges.
+              </p>
+            </div>
           </div>
         </div>
 
-        {/* Actions */}
-        <div className="flex justify-between p-4 border-t border-gray-200 dark:border-gray-700 flex-shrink-0">
+        {/* Footer */}
+        <div className="flex items-center justify-between p-4 border-t border-gray-200 dark:border-gray-700">
           <div>
             {onDelete && (
               <button
-                type="button"
                 onClick={handleDelete}
-                className="flex items-center space-x-2 px-3 py-2 text-sm bg-red-500 hover:bg-red-600 text-white rounded-md transition-colors"
+                className="px-4 py-2 text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-900/20 rounded-md transition-colors flex items-center space-x-2"
               >
                 <Trash2 size={16} />
-                <span>Delete</span>
+                <span>Delete State</span>
               </button>
             )}
           </div>
           <div className="flex space-x-2">
             <button
-              type="button"
               onClick={onClose}
-              className="px-4 py-2 text-sm border border-gray-300 dark:border-gray-600 text-gray-700 dark:text-gray-300 rounded-md hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors"
+              className="px-4 py-2 text-gray-600 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-md transition-colors"
             >
               Cancel
             </button>
             <button
-              type="button"
               onClick={handleSave}
-              disabled={!isValid}
-              className={`flex items-center space-x-2 px-4 py-2 text-sm rounded-md transition-colors ${
-                isValid
-                  ? 'bg-blue-500 hover:bg-blue-600 text-white'
-                  : 'bg-gray-300 dark:bg-gray-600 text-gray-500 dark:text-gray-400 cursor-not-allowed'
-              }`}
+              className="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 transition-colors flex items-center space-x-2"
             >
               <Save size={16} />
               <span>Save</span>

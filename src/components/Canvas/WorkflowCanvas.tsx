@@ -174,13 +174,36 @@ const WorkflowCanvasInner: React.FC<WorkflowCanvasProps> = ({
   // Use refs to access current values in useEffect without causing dependency issues
   const uiStatesRef = useRef(uiStates);
   const uiTransitionsRef = useRef(uiTransitions);
-  const onStateEditRef = useRef(onStateEdit);
   const onTransitionEditRef = useRef(onTransitionEdit);
 
   uiStatesRef.current = uiStates;
   uiTransitionsRef.current = uiTransitions;
-  onStateEditRef.current = onStateEdit;
   onTransitionEditRef.current = onTransitionEdit;
+
+  // Handle state name changes directly without modal
+  const handleStateNameChange = useCallback((stateId: string, newName: string) => {
+    if (!cleanedWorkflow) return;
+
+    const updatedWorkflow = {
+      ...cleanedWorkflow,
+      configuration: {
+        ...cleanedWorkflow.configuration,
+        states: {
+          ...cleanedWorkflow.configuration.states,
+          [stateId]: {
+            ...cleanedWorkflow.configuration.states[stateId],
+            name: newName.trim() || stateId
+          }
+        }
+      },
+      updatedAt: new Date().toISOString()
+    };
+
+    onWorkflowUpdate(updatedWorkflow);
+  }, [cleanedWorkflow, onWorkflowUpdate]);
+
+  const handleStateNameChangeRef = useRef(handleStateNameChange);
+  handleStateNameChangeRef.current = handleStateNameChange;
 
 
 
@@ -363,9 +386,9 @@ const WorkflowCanvasInner: React.FC<WorkflowCanvasProps> = ({
     if (cleanedWorkflow) {
       // Create nodes and edges inside useEffect to avoid dependency issues
       const currentUiStates = uiStatesRef.current;
-      const currentOnStateEdit = onStateEditRef.current;
       const currentOnTransitionEdit = onTransitionEditRef.current;
       const currentHandleTransitionUpdate = handleTransitionUpdateRef.current;
+      const currentHandleStateNameChange = handleStateNameChangeRef.current;
 
 
 
@@ -376,7 +399,7 @@ const WorkflowCanvasInner: React.FC<WorkflowCanvasProps> = ({
         data: {
           label: state.name,
           state: state,
-          onEdit: currentOnStateEdit,
+          onNameChange: currentHandleStateNameChange,
         },
       }));
 
