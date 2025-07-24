@@ -312,7 +312,7 @@ describe('Auto-Layout Functionality', () => {
     it('should render auto-layout button', () => {
       renderWorkflowCanvas()
 
-      const autoLayoutButton = screen.getByTestId('control-button')
+      const autoLayoutButton = screen.getByTitle('Auto-arrange states using hierarchical layout')
       expect(autoLayoutButton).toBeInTheDocument()
       expect(autoLayoutButton).not.toBeDisabled()
     })
@@ -326,14 +326,14 @@ describe('Auto-Layout Functionality', () => {
 
       renderWorkflowCanvas(invalidWorkflow)
 
-      const autoLayoutButton = screen.getByTestId('control-button')
+      const autoLayoutButton = screen.getByTitle('Auto-arrange states using hierarchical layout')
       expect(autoLayoutButton).toBeDisabled()
     })
 
     it('should call onWorkflowUpdate when auto-layout button is clicked', () => {
       renderWorkflowCanvas()
 
-      const autoLayoutButton = screen.getByTestId('control-button')
+      const autoLayoutButton = screen.getByTitle('Auto-arrange states using hierarchical layout')
       fireEvent.click(autoLayoutButton)
 
       expect(mockOnWorkflowUpdate).toHaveBeenCalledTimes(1)
@@ -361,7 +361,7 @@ describe('Auto-Layout Functionality', () => {
       // by checking that the workflow update callback is called with new positions
       renderWorkflowCanvas()
 
-      const autoLayoutButton = screen.getByTestId('control-button')
+      const autoLayoutButton = screen.getByTitle('Auto-arrange states using hierarchical layout')
       fireEvent.click(autoLayoutButton)
 
       // Verify that onWorkflowUpdate was called with updated positions
@@ -380,6 +380,10 @@ describe('Auto-Layout Functionality', () => {
 
     it('should include auto-layout instruction in Quick Help panel', () => {
       renderWorkflowCanvas()
+
+      // Click the help button to show the Quick Help panel
+      const helpButton = screen.getByTitle('Toggle Quick Help')
+      fireEvent.click(helpButton)
 
       expect(screen.getByText(/Use layout button to auto-arrange states/)).toBeInTheDocument()
     })

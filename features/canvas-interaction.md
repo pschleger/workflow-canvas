@@ -56,7 +56,9 @@ Interactive features that allow users to manipulate the workflow canvas directly
   - Works with workflows of any size and complexity
 
 ### Quick Help Panel
-- **Description**: On-screen help panel showing available interactions
+- **Description**: Toggleable on-screen help panel showing available interactions
+- **Toggle**: Click the '?' button in the canvas controls to show/hide
+- **Position**: Top-right corner of the canvas when visible
 - **Content**:
   - Double-click canvas to add state
   - Double-click transitions to edit

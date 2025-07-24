@@ -96,7 +96,7 @@ describe('Auto-Layout Fix Verification', () => {
     renderWorkflowCanvas()
 
     // Verify the auto-layout button is present and enabled
-    const autoLayoutButton = screen.getByTestId('control-button')
+    const autoLayoutButton = screen.getByTitle('Auto-arrange states using hierarchical layout')
     expect(autoLayoutButton).toBeInTheDocument()
     expect(autoLayoutButton).not.toBeDisabled()
 
@@ -137,7 +137,7 @@ describe('Auto-Layout Fix Verification', () => {
   it('should handle multiple auto-layout applications correctly', () => {
     renderWorkflowCanvas()
 
-    const autoLayoutButton = screen.getByTestId('control-button')
+    const autoLayoutButton = screen.getByTitle('Auto-arrange states using hierarchical layout')
     
     // Apply auto-layout first time
     fireEvent.click(autoLayoutButton)
@@ -162,8 +162,8 @@ describe('Auto-Layout Fix Verification', () => {
       </ReactFlowProvider>
     )
     
-    // Apply auto-layout second time (use first control button since there are multiple)
-    fireEvent.click(screen.getAllByTestId('control-button')[0])
+    // Apply auto-layout second time (use the first auto-layout button since there are multiple)
+    fireEvent.click(screen.getAllByTestId('auto-layout-button')[0])
     expect(mockOnWorkflowUpdate).toHaveBeenCalledTimes(1)
     
     const secondUpdate = mockOnWorkflowUpdate.mock.calls[0][0]

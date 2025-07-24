@@ -1,4 +1,4 @@
-import React, { useCallback, useMemo, useRef } from 'react';
+import React, { useCallback, useMemo, useRef, useState } from 'react';
 import {
   ReactFlow,
   Background,
@@ -153,6 +153,7 @@ const WorkflowCanvasInner: React.FC<WorkflowCanvasProps> = ({
   darkMode
 }) => {
   const { screenToFlowPosition } = useReactFlow();
+  const [showQuickHelp, setShowQuickHelp] = useState(false);
 
   // Use ref to always get current workflow value (fixes closure issue)
   // Re-enable cleanup now that the white screen issue is resolved
@@ -678,6 +679,11 @@ const WorkflowCanvasInner: React.FC<WorkflowCanvasProps> = ({
     onWorkflowUpdate(layoutedWorkflow, 'Applied auto-layout');
   }, [cleanedWorkflow, onWorkflowUpdate]);
 
+  // Quick Help toggle handler
+  const handleToggleQuickHelp = useCallback(() => {
+    setShowQuickHelp(prev => !prev);
+  }, []);
+
   // Handle double-click detection on pane
   const lastClickTimeRef = useRef<number>(0);
   const lastClickPositionRef = useRef<{ x: number; y: number }>({ x: 0, y: 0 });
@@ -829,8 +835,17 @@ const WorkflowCanvasInner: React.FC<WorkflowCanvasProps> = ({
             onClick={handleAutoLayout}
             disabled={!canAutoLayout(cleanedWorkflow)}
             title="Auto-arrange states using hierarchical layout"
+            data-testid="auto-layout-button"
           >
             <Network size={16} />
+          </ControlButton>
+          <ControlButton
+            onClick={handleToggleQuickHelp}
+            title="Toggle Quick Help"
+            className={showQuickHelp ? 'bg-blue-100 dark:bg-blue-900' : ''}
+            data-testid="quick-help-button"
+          >
+            <span className="text-sm font-bold">?</span>
           </ControlButton>
         </Controls>
 
@@ -859,18 +874,20 @@ const WorkflowCanvasInner: React.FC<WorkflowCanvasProps> = ({
           </div>
         </Panel>
 
-        <Panel position="top-right" className="bg-white dark:bg-gray-800 p-3 rounded-lg shadow-lg border border-gray-200 dark:border-gray-700">
-          <div className="text-xs text-gray-600 dark:text-gray-400 space-y-1">
-            <div className="font-medium text-gray-900 dark:text-white mb-2">Quick Help</div>
-            <div>• Double-click canvas to add state</div>
-            <div>• Double-click transitions to edit</div>
-            <div>• Drag from state handles to connect</div>
-            <div>• Drag transition labels to reposition</div>
-            <div>• Click edit icons to modify</div>
-            <div>• Drag states to rearrange</div>
-            <div>• Use layout button to auto-arrange states</div>
-          </div>
-        </Panel>
+        {showQuickHelp && (
+          <Panel position="top-right" className="bg-white dark:bg-gray-800 p-3 rounded-lg shadow-lg border border-gray-200 dark:border-gray-700" data-testid="quick-help-panel">
+            <div className="text-xs text-gray-600 dark:text-gray-400 space-y-1">
+              <div className="font-medium text-gray-900 dark:text-white mb-2">Quick Help</div>
+              <div>• Double-click canvas to add state</div>
+              <div>• Double-click transitions to edit</div>
+              <div>• Drag from state handles to connect</div>
+              <div>• Drag transition labels to reposition</div>
+              <div>• Click edit icons to modify</div>
+              <div>• Drag states to rearrange</div>
+              <div>• Use layout button to auto-arrange states</div>
+            </div>
+          </Panel>
+        )}
       </ReactFlow>
     </div>
   );
