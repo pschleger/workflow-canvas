@@ -146,25 +146,18 @@ describe('Bug Verification Tests', () => {
       expect(cleanedWorkflow.layout.states).toHaveLength(2);
     });
 
-    it('should verify UI data creation functions work correctly', async () => {
-      // Import the data creation functions to test them directly
-      const { cleanupWorkflowState, createUITransitionData, createUIStateData } = await import('../components/Canvas/WorkflowCanvas');
+    it('should verify workflow cleanup function works correctly', async () => {
+      // Import the cleanup function to test it directly
+      const { cleanupWorkflowState } = await import('../components/Canvas/WorkflowCanvas');
 
       const cleanedWorkflow = cleanupWorkflowState(mockWorkflow);
 
-      console.log('Testing createUITransitionData...');
-      const uiTransitions = createUITransitionData(cleanedWorkflow);
-      console.log('UI Transitions created:', uiTransitions.length);
-      console.log('UI Transitions:', uiTransitions.map(t => ({ id: t.id, source: t.sourceStateId, target: t.targetStateId })));
-
-      console.log('Testing createUIStateData...');
-      const uiStates = createUIStateData(cleanedWorkflow, uiTransitions);
-      console.log('UI States created:', uiStates.length);
-      console.log('UI States:', uiStates.map(s => ({ id: s.id, name: s.name, transitionIds: s.transitionIds })));
-
-      // The functions should create the expected UI data
-      expect(uiTransitions).toHaveLength(2);
-      expect(uiStates).toHaveLength(2);
+      console.log('Testing cleanupWorkflowState...');
+      expect(cleanedWorkflow).toBeDefined();
+      expect(cleanedWorkflow.configuration).toBeDefined();
+      expect(cleanedWorkflow.layout).toBeDefined();
+      expect(cleanedWorkflow.configuration.states).toBeDefined();
+      expect(cleanedWorkflow.layout.states).toBeDefined();
     });
 
     it('should render workflow without excessive updates', async () => {

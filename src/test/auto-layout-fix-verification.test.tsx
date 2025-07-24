@@ -162,8 +162,8 @@ describe('Auto-Layout Fix Verification', () => {
       </ReactFlowProvider>
     )
     
-    // Apply auto-layout second time
-    fireEvent.click(screen.getByTestId('control-button'))
+    // Apply auto-layout second time (use first control button since there are multiple)
+    fireEvent.click(screen.getAllByTestId('control-button')[0])
     expect(mockOnWorkflowUpdate).toHaveBeenCalledTimes(1)
     
     const secondUpdate = mockOnWorkflowUpdate.mock.calls[0][0]

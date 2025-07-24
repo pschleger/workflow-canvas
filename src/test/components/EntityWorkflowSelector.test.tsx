@@ -2,9 +2,6 @@ import { describe, it, expect, vi, beforeEach } from 'vitest'
 import { render, screen, fireEvent, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { EntityWorkflowSelector } from '../../components/Sidebar/EntityWorkflowSelector'
-import { MockApiService } from '../../services/mockApi'
-
-vi.mock('../../services/mockApi')
 
 describe('EntityWorkflowSelector', () => {
   const mockProps = {
@@ -16,94 +13,72 @@ describe('EntityWorkflowSelector', () => {
 
   beforeEach(() => {
     vi.clearAllMocks()
-    
-    vi.mocked(MockApiService.getEntities).mockResolvedValue({
-      data: [
-        { id: 'user-entity', name: 'User', description: 'User workflows', workflowCount: 2 },
-        { id: 'order-entity', name: 'Order', description: 'Order workflows', workflowCount: 1 }
-      ],
-      success: true,
-      message: 'Success'
-    })
-    
-    vi.mocked(MockApiService.getWorkflows).mockResolvedValue({
-      data: [
-        { 
-          id: 'user-registration', 
-          name: 'User Registration', 
-          description: 'User registration workflow',
-          stateCount: 4,
-          transitionCount: 5,
-          updatedAt: '2024-01-15T10:30:00Z'
-        }
-      ],
-      success: true,
-      message: 'Success'
-    })
   })
 
-  it('renders the component with title', () => {
+  it('renders the component with title', async () => {
     render(<EntityWorkflowSelector {...mockProps} />)
-    
-    expect(screen.getByText('Entities & Workflows')).toBeInTheDocument()
+
+    // Wait for loading to complete and title to appear
+    await waitFor(() => {
+      expect(screen.getByText('Entities & Workflows')).toBeInTheDocument()
+    })
   })
 
   it('shows loading state initially', () => {
     render(<EntityWorkflowSelector {...mockProps} />)
-    
-    // Should show loading animation
-    expect(screen.getByRole('generic')).toHaveClass('animate-pulse')
+
+    // Should show loading animation - check for the loading container
+    const loadingContainer = document.querySelector('.animate-pulse')
+    expect(loadingContainer).toBeInTheDocument()
   })
 
   it('loads and displays entities', async () => {
     render(<EntityWorkflowSelector {...mockProps} />)
-    
+
     await waitFor(() => {
       expect(screen.getByText('User')).toBeInTheDocument()
       expect(screen.getByText('Order')).toBeInTheDocument()
+      expect(screen.getByText('Payment')).toBeInTheDocument()
     })
-    
-    expect(MockApiService.getEntities).toHaveBeenCalledOnce()
   })
 
   it('shows entity workflow count', async () => {
     render(<EntityWorkflowSelector {...mockProps} />)
-    
+
     await waitFor(() => {
-      expect(screen.getByText('2 workflows')).toBeInTheDocument()
-      expect(screen.getByText('1 workflow')).toBeInTheDocument()
+      expect(screen.getByText('2 workflows')).toBeInTheDocument() // User entity
+      expect(screen.getAllByText('1 workflow')).toHaveLength(2)  // Order and Payment entities
     })
   })
 
   it('expands entity and loads workflows when clicked', async () => {
     const user = userEvent.setup()
     render(<EntityWorkflowSelector {...mockProps} />)
-    
+
     await waitFor(() => {
       expect(screen.getByText('User')).toBeInTheDocument()
     })
-    
+
     await user.click(screen.getByText('User'))
-    
-    expect(mockProps.onEntitySelect).toHaveBeenCalledWith('user-entity')
-    
+
     await waitFor(() => {
-      expect(MockApiService.getWorkflows).toHaveBeenCalledWith('user-entity')
+      expect(mockProps.onEntitySelect).toHaveBeenCalledWith('user-entity')
     })
   })
 
   it('displays workflows after entity expansion', async () => {
     const user = userEvent.setup()
     render(<EntityWorkflowSelector {...mockProps} />)
-    
+
     await waitFor(() => {
       expect(screen.getByText('User')).toBeInTheDocument()
     })
-    
+
     await user.click(screen.getByText('User'))
-    
+
     await waitFor(() => {
       expect(screen.getByText('User Registration')).toBeInTheDocument()
+      expect(screen.getByText('User Verification')).toBeInTheDocument()
     })
   })
 
@@ -173,8 +148,10 @@ describe('EntityWorkflowSelector', () => {
     await user.click(screen.getByText('User'))
     
     await waitFor(() => {
-      expect(screen.getByText('4 states')).toBeInTheDocument()
+      expect(screen.getByText('4 states')).toBeInTheDocument()  // User Registration workflow
       expect(screen.getByText('5 transitions')).toBeInTheDocument()
+      expect(screen.getByText('3 states')).toBeInTheDocument()  // User Verification workflow
+      expect(screen.getByText('4 transitions')).toBeInTheDocument()
     })
   })
 })

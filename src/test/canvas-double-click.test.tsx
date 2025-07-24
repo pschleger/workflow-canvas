@@ -150,7 +150,7 @@ describe('Canvas Double-Click to Add State', () => {
       clientY: 150
     })
     
-    // Should call onWorkflowUpdate with new state
+    // Should call onWorkflowUpdate with new state (function is called with workflow and message)
     expect(mockOnWorkflowUpdate).toHaveBeenCalledWith(
       expect.objectContaining({
         configuration: expect.objectContaining({
@@ -171,7 +171,8 @@ describe('Canvas Double-Click to Add State', () => {
             })
           ])
         })
-      })
+      }),
+      expect.any(String) // Message parameter
     )
   })
 
@@ -218,7 +219,8 @@ describe('Canvas Double-Click to Add State', () => {
             })
           })
         })
-      })
+      }),
+      expect.any(String) // Message parameter
     )
   })
 

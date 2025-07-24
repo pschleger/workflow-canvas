@@ -45,7 +45,12 @@ vi.mock('@xyflow/react', () => ({
     );
   },
   Background: () => <div data-testid="react-flow-background" />,
-  Controls: () => <div data-testid="react-flow-controls" />,
+  Controls: ({ children }: { children?: React.ReactNode }) => <div data-testid="react-flow-controls">{children}</div>,
+  ControlButton: ({ children, onClick, disabled, title }: any) => (
+    <button onClick={onClick} disabled={disabled} title={title} data-testid="control-button">
+      {children}
+    </button>
+  ),
   MiniMap: () => <div data-testid="react-flow-minimap" />,
   Panel: ({ children }: { children: React.ReactNode }) => <div data-testid="react-flow-panel">{children}</div>,
   Handle: () => <div data-testid="react-flow-handle" />,

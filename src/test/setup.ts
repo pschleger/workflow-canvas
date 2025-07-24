@@ -14,7 +14,12 @@ vi.mock('@xyflow/react', () => ({
   }, children),
   MiniMap: () => React.createElement('div', { 'data-testid': 'react-flow-minimap' }),
   Panel: ({ children }: { children: React.ReactNode }) => React.createElement('div', { 'data-testid': 'react-flow-panel' }, children),
-  Handle: () => React.createElement('div', { 'data-testid': 'react-flow-handle' }),
+  Handle: ({ type, position, id }: any) => React.createElement('div', {
+    'data-testid': 'react-flow-handle',
+    'data-type': type,
+    'data-position': position,
+    'data-id': id
+  }),
   Position: {
     Left: 'left',
     Right: 'right',
@@ -27,11 +32,29 @@ vi.mock('@xyflow/react', () => ({
   useNodesState: () => [[], () => {}, () => {}],
   useEdgesState: () => [[], () => {}, () => {}],
   getBezierPath: () => ['M 0 0 L 100 100', 50, 50],
+  getSmoothStepPath: () => ['M 0 0 L 100 100', 50, 50],
   EdgeLabelRenderer: ({ children }: { children: React.ReactNode }) => React.createElement('div', { 'data-testid': 'edge-label-renderer' }, children),
-  BaseEdge: () => React.createElement('path', { 'data-testid': 'base-edge' }),
+  BaseEdge: ({ path }: any) => React.createElement('path', { 'data-testid': 'base-edge', d: path }),
   ReactFlowProvider: ({ children }: { children: React.ReactNode }) => React.createElement('div', { 'data-testid': 'react-flow-provider' }, children),
   useReactFlow: () => ({
-    screenToFlowPosition: vi.fn((pos) => ({ x: pos.x - 100, y: pos.y - 50 }))
+    screenToFlowPosition: vi.fn((pos) => ({ x: pos.x - 100, y: pos.y - 50 })),
+    getNodes: vi.fn(() => []),
+    getEdges: vi.fn(() => []),
+    setNodes: vi.fn(),
+    setEdges: vi.fn(),
+    addNodes: vi.fn(),
+    addEdges: vi.fn(),
+    deleteElements: vi.fn(),
+    fitView: vi.fn(),
+    zoomIn: vi.fn(),
+    zoomOut: vi.fn(),
+    zoomTo: vi.fn(),
+    getZoom: vi.fn(() => 1),
+    setCenter: vi.fn(),
+    getViewport: vi.fn(() => ({ x: 0, y: 0, zoom: 1 })),
+    setViewport: vi.fn(),
+    project: vi.fn((pos) => pos),
+    flowToScreenPosition: vi.fn((pos) => pos)
   }),
 }))
 
