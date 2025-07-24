@@ -237,6 +237,25 @@ export class HistoryService {
   public reloadFromSession(): void {
     this.storage = this.loadFromSession();
   }
+
+  /**
+   * Get debug information about history storage
+   */
+  public getDebugInfo(): { [workflowId: string]: { entries: number; currentIndex: number; undoCount: number; redoCount: number } } {
+    const debug: { [workflowId: string]: { entries: number; currentIndex: number; undoCount: number; redoCount: number } } = {};
+
+    Object.keys(this.storage).forEach(workflowId => {
+      const history = this.storage[workflowId];
+      debug[workflowId] = {
+        entries: history.entries.length,
+        currentIndex: history.currentIndex,
+        undoCount: this.getUndoCount(workflowId),
+        redoCount: this.getRedoCount(workflowId)
+      };
+    });
+
+    return debug;
+  }
 }
 
 // Export singleton instance

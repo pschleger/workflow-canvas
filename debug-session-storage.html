@@ -1,0 +1,96 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Debug Session Storage</title>
+    <style>
+        body { font-family: Arial, sans-serif; margin: 20px; }
+        .section { margin: 20px 0; padding: 15px; border: 1px solid #ccc; }
+        pre { background: #f5f5f5; padding: 10px; overflow-x: auto; }
+        button { padding: 10px 15px; margin: 5px; cursor: pointer; }
+    </style>
+</head>
+<body>
+    <h1>Session Storage Debug Tool</h1>
+    
+    <div class="section">
+        <h2>Current Session Storage Contents</h2>
+        <button onclick="showSessionStorage()">Show Session Storage</button>
+        <button onclick="clearSessionStorage()">Clear Session Storage</button>
+        <pre id="sessionStorageContent"></pre>
+    </div>
+
+    <div class="section">
+        <h2>History Service Debug</h2>
+        <button onclick="checkHistoryService()">Check History Service</button>
+        <pre id="historyServiceContent"></pre>
+    </div>
+
+    <div class="section">
+        <h2>Simulate User Registration Load</h2>
+        <button onclick="simulateUserRegLoad()">Simulate Load</button>
+        <pre id="simulationContent"></pre>
+    </div>
+
+    <script>
+        function showSessionStorage() {
+            const content = document.getElementById('sessionStorageContent');
+            const historyData = sessionStorage.getItem('statemachine-ui-history');
+            const configData = sessionStorage.getItem('statemachine-ui-config');
+            
+            content.textContent = `History Data: ${historyData || 'null'}\n\nConfig Data: ${configData || 'null'}\n\nAll Session Storage Keys: ${JSON.stringify(Object.keys(sessionStorage))}`;
+        }
+
+        function clearSessionStorage() {
+            sessionStorage.clear();
+            showSessionStorage();
+            alert('Session storage cleared!');
+        }
+
+        function checkHistoryService() {
+            const content = document.getElementById('historyServiceContent');
+            
+            // This would need to be run in the context of the actual app
+            content.textContent = 'This function needs to be run in the context of the actual application where historyService is available.';
+        }
+
+        function simulateUserRegLoad() {
+            const content = document.getElementById('simulationContent');
+            
+            // Create mock history data that might cause the issue
+            const mockHistoryData = {
+                'user-registration': {
+                    entries: [],
+                    currentIndex: -1
+                }
+            };
+            
+            // Add 50 entries to simulate the bug
+            for (let i = 0; i < 50; i++) {
+                mockHistoryData['user-registration'].entries.push({
+                    timestamp: Date.now() - (50 - i) * 1000,
+                    workflow: {
+                        id: 'user-registration',
+                        entityModel: { modelName: 'user-entity', modelVersion: 1 },
+                        configuration: { version: '1.0', name: 'User Registration', desc: 'Test', initialState: 'pending', active: true, states: { pending: { transitions: [] } } },
+                        layout: { workflowId: 'user-registration', version: 1, updatedAt: new Date().toISOString(), states: [], transitions: [] }
+                    },
+                    description: `Auto-generated entry ${i}`
+                });
+            }
+            
+            sessionStorage.setItem('statemachine-ui-history', JSON.stringify(mockHistoryData));
+            
+            content.textContent = `Created mock history data with 50 entries for user-registration.\nUndo count would be: ${mockHistoryData['user-registration'].entries.length - 1}`;
+            
+            showSessionStorage();
+        }
+
+        // Auto-load on page load
+        window.onload = function() {
+            showSessionStorage();
+        };
+    </script>
+</body>
+</html>
